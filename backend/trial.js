@@ -1,10 +1,12 @@
 const { Client } = require("ssh2");
-
+require('dotenv').config()
 const host1 = new Client();
-host: "100.94.238.89",
-port: 22,
-username: "prajit",
-password: "root"
+host1_details = {
+    host: process.env.HOST,
+    port: process.env.PORT,
+    username: process.env.USERNAME,
+    password: process.env.PASSWORD
+}
 
 host1.on("ready", () => {
     console.log("Client :: ready");

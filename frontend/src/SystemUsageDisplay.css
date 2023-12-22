@@ -1,0 +1,23 @@
+.usage-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+  }
+  
+  .usage-block {
+    margin: 10px;
+    padding: 100px;
+    text-align: center;
+    color: #21a0fa;
+  }
+  
+  .usage-number {
+    color: #e9f5ff;
+  }
+
+.chart-container {
+    width: 100%;
+    max-width: 600px; 
+    margin: 20px auto;
+  }
+  

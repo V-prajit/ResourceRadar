@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import './SystemUsageDisplay.css'; // Import the CSS file
+import '../css/SystemUsageDisplay.css'; // Import the CSS file
 import { Line } from 'react-chartjs-2';
 import Chart from 'chart.js/auto';
 
@@ -77,7 +77,9 @@ const SystemUsageDisplay = () => {
         title: {
           display: true,
           text: 'CPU Usage (%)'
-        }
+        },
+        min:0,
+        max:100,
       }
     }
   };

@@ -5,7 +5,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import SystemUsageDisplay from './components/cpu_usage';
+import SystemUsageDisplay from './components/system_usage';
 
 function App() {
   return (

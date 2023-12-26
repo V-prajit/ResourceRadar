@@ -1,4 +1,5 @@
-backend/.env
+
 backend/trial.js
 backend/db_test.js
 .vscode/settings.json
+backend/src/.env

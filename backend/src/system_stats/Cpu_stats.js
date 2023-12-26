@@ -1,6 +1,6 @@
-const host1 = require('../SSH_Client');
+const host1 = require('./SSH_Client');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
-const GETDATA = require('./websocket')
+const GETDATA = require('../API/websocket')
 const token = 'F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==';
 const org = 'server_stat';
 const bucket = 'Server_Stats';

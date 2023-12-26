@@ -1,5 +1,5 @@
-const host1 = require('./SSH_Client');
-const { InfluxDB, Point } = require('@influxdata/influxdb-client');
+const host1 = require('../SSH_Client');
+const { InfluxDB, Point, consoleLogger } = require('@influxdata/influxdb-client');
 const GETDATA = require('../API/websocket')
 const token = 'F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==';
 const org = 'server_stat';
@@ -13,6 +13,7 @@ const fetchCpuUsage = () => {
         stream.on("data", (data) => {
             const output = data.toString();
             const cpuUsage = parseFloat(output).toFixed(1);
+            //console.log(cpuUsage);
             GETDATA.SETCPUDATA(cpuUsage)
             const point = new Point('cpu_usage')
                 .tag('host', 'Host1')

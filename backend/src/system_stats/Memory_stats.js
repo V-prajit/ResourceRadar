@@ -1,4 +1,4 @@
-const host1 = require('./SSH_Client');
+const host1 = require('../SSH_Client');
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 const GETDATA = require('../API/websocket')
 

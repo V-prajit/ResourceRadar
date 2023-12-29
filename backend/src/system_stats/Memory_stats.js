@@ -7,8 +7,8 @@ const org = process.env.INFLUX_ORG;
 const bucket = process.env.INFLUX_BUCKET;
 const client = new InfluxDB({ url: 'http://localhost:8086/', token: token });
 
-
-const writeApi = client.getWriteApi(org, bucket);
+const writeOptions = {flushInterval: 1000};
+const writeApi = client.getWriteApi(org, bucket, 'ns', writeOptions);
 
 const fetchMemoryUsage = () => {
     host1.exec("top -bn1 | grep 'MiB Mem' | awk '{print $8}'", (err, stream) => {

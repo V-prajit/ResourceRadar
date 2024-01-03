@@ -31,10 +31,10 @@ const getMachines = async () => {
 
 const createMachine = (body) => {
   return new Promise(function (resolve, reject) {
-    const { name, host, username, password, port } = body;
+    const { Name, Host, Username, Password, Port } = body;
     pool.query(
       "INSERT INTO machines (name, host, username, password, port) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-      [name, host, username, password, port],
+      [Name, Host, Username, Password, Port],
       (error, results) => {
         if (error) {
           reject(error);

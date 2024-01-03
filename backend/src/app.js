@@ -9,7 +9,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 const db_model = require('./API/postgres_connect.js')
 app.use(express.json())
-
+const VerifyDetails = require('./API/ssh_verification.js')
 
 app.get('/', (req, res) => {
     db_model.getMachines()
@@ -21,16 +21,17 @@ app.get('/', (req, res) => {
     })
 })
 
-app.post('/machines', (req, res) => {
-    machineData = req.body;
-    db_model.createMachine(machineData)
-    .then(response => {
-        res.status(200).send(response);
-    })
-    .catch(error => {
-        res.status(500).send(error);
-    })
-})
+app.post('/sshverify', async(req, res) => {
+    const formData = req.body;
+    try{
+        const check_result = await VerifyDetails(formData);
+        db_model.createMachine(formData)
+        res.status(200).send({ verified: check_result });
+    } catch (error){
+        console.log(error);
+        res.status(500).send({ verified: false, error: 'SSH verification failed' });
+    }
+});
 
 const fetchCpuUsage = require('./system_stats/Cpu_stats.js');
 const fetchMemoryUsage = require('./system_stats/Memory_stats.js');

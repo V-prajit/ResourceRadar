@@ -4,3 +4,4 @@ backend/db_test.js
 .vscode/settings.json
 backend/src/.env
 backend/.env
+backend/src/API/.env

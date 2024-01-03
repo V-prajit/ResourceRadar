@@ -1,12 +1,14 @@
+require('dotenv').config();
 const host1 = require('../SSH_Client');
 const { InfluxDB, Point, consoleLogger } = require('@influxdata/influxdb-client');
 const GETDATA = require('../API/websocket')
-const token = 'F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==';
-const org = 'server_stat';
-const bucket = 'Server_Stats';
+const token = process.env.INFLUX_TOKEN;
+const org = process.env.INFLUX_ORG;
+const bucket = process.env.INFLUX_BUCKET;
 const client = new InfluxDB({ url: 'http://localhost:8086/', token: token });
 
-const writeApi = client.getWriteApi(org, bucket);
+const writeOptions = {flushInterval: 1000};
+const writeApi = client.getWriteApi(org, bucket, 'ns', writeOptions);
 const fetchCpuUsage = () => {
     host1.exec("top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}'", (err, stream) => {
         if (err) throw err;
@@ -14,11 +16,11 @@ const fetchCpuUsage = () => {
             const output = data.toString();
             const cpuUsage = parseFloat(output).toFixed(1);
             //console.log(cpuUsage);
-            GETDATA.SETCPUDATA(cpuUsage)
             const point = new Point('cpu_usage')
                 .tag('host', 'Host1')
                 .floatField('usage', cpuUsage);
             writeApi.writePoint(point);
+            GETDATA.SETCPUDATA(cpuUsage)
         });
     });
 };

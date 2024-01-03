@@ -33,11 +33,9 @@ app.post('/sshverify', async(req, res) => {
     }
 });
 
-const fetchCpuUsage = require('./system_stats/Cpu_stats.js');
-const fetchMemoryUsage = require('./system_stats/Memory_stats.js');
+const monitorAllSystems = require('./SSH_Client.js')
 
-setInterval(fetchCpuUsage, 1000);
-setInterval(fetchMemoryUsage, 1000);
+setInterval(monitorAllSystems, 1000);
 
 app.listen(express_port, () => {
     console.log(`App running on port ${express_port}.`);

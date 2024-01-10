@@ -4,6 +4,14 @@ require('dotenv').config();
 const fetchCpuUsage = require('./system_stats/Cpu_stats');
 const fetchMemoryUsage = require('./system_stats/Memory_stats');
 
+const { InfluxDB, Point, consoleLogger } = require('@influxdata/influxdb-client');
+const token = process.env.INFLUX_TOKEN;
+const org = process.env.INFLUX_ORG;
+const bucket = process.env.INFLUX_BUCKET;
+
+const client = new InfluxDB({ url: 'http://localhost:8086/', token: token });
+const queryApi = client.getQueryApi(org);
+
 const pool = new Pool({
     user: process.env.PGUSER,
     host: process.env.PGHOST,
@@ -36,16 +44,79 @@ const createsshClient = (system) => {
         username: system.username,
         password: system.password
     });
+
     return sshClient;
 };
 
 const monitorAllSystems = async () => {
     const systems = await getSystemsData(); // Retrieve systems from the database
     systems.forEach(system => {
-        createsshClient(system); // Create an SSH client for each system
+        createsshClient(system);
     });
 };
 
+const SendResources = async () => {
+    const systems = await getSystemsData();
+    const resourceData = await Promise.all(systems.map(async (system) => {
+        return {
+            host: system.host,
+            cpuUsage: await CPUResourceUsage(system),
+            memUsage: await MEMORYResourceUsage(system)
+        };
+    }));
+    return resourceData;
+};
 
+const CPUResourceUsage = (system) => {
+    const FluxQuery = `
+    from(bucket: "Server_Stats")
+      |> range(start: -1m)
+      |> filter(fn: (r) => r["_measurement"] == "cpu_usage")
+      |> filter(fn: (r) => r["_field"] == "usage")
+      |> filter(fn: (r) => r["host"] == "${system.host}")
+      |> last()
+    `;
 
-module.exports = monitorAllSystems;
+    return new Promise((resolve, reject) => {
+        queryApi.queryRows(FluxQuery, {
+            next (row, tableMeta){
+                const o = tableMeta.toObject(row);
+                resolve(o._value);
+            },
+            error(error) {
+                console.log(error);
+                reject(error);
+            },
+            complete(){
+            }
+        })
+    });
+};
+
+const MEMORYResourceUsage = (system) => {
+    const FluxQuery = `
+    from(bucket: "Server_Stats")
+      |> range(start: -1m)
+      |> filter(fn: (r) => r["_measurement"] == "memory_usage")
+      |> filter(fn: (r) => r["_field"] == "usage")
+      |> filter(fn: (r) => r["host"] == "${system.host}")
+      |> last()
+    `;
+
+    return new Promise((resolve, reject) => {
+        queryApi.queryRows(FluxQuery, {
+            next (row, tableMeta){
+                const o = tableMeta.toObject(row);
+                resolve(o._value);
+            },
+            error(error) {
+                console.log(error);
+                reject(error);
+            },
+            complete(){
+            }
+        })
+    });
+};
+
+module.exports = { monitorAllSystems, SendResources };

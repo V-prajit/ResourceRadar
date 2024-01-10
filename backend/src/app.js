@@ -7,9 +7,10 @@ const corsOptions = {
     origin: 'http://localhost:3000', // Replace with your React app's URL
 };
 app.use(cors(corsOptions));
-const db_model = require('./API/postgres_connect.js')
+const db_model = require('./API/postgres_connect.js');
 app.use(express.json())
-const VerifyDetails = require('./API/ssh_verification.js')
+const VerifyDetails = require('./API/ssh_verification.js');
+
 
 app.get('/', (req, res) => {
     db_model.getMachines()
@@ -33,7 +34,18 @@ app.post('/sshverify', async(req, res) => {
     }
 });
 
-const monitorAllSystems = require('./SSH_Client.js')
+const {monitorAllSystems, SendResources} = require('./SSH_Client.js')
+
+app.get('/resourceusage', async (req, res) => {
+    try {
+        const allSystemUsage = await SendResources();
+        res.json(allSystemUsage);
+    }
+    catch (error){
+        console.error('Error', error);
+        res.status(500).send("Server Error");
+    }
+});
 
 setInterval(monitorAllSystems, 1000);
 

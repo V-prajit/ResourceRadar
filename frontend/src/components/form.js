@@ -59,7 +59,6 @@ function MachinesForm() {
     }
     return (
         <div>
-          {Machines ? Machines : 'There is no machine data available'}
           <br />
           <button onClick={ () => { setIsOpen(true)}}>Add machine</button>
           { isOpen && (

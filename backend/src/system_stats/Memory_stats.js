@@ -1,6 +1,5 @@
 require('dotenv').config();
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
-const GETDATA = require('../API/websocket')
 const token = process.env.INFLUX_TOKEN;
 const org = process.env.INFLUX_ORG;
 const bucket = process.env.INFLUX_BUCKET;
@@ -14,9 +13,9 @@ const fetchMemoryUsage = (sshClient, system) => {
         if (err) throw err;
         stream.on("data", (data) => {
             const memoryUsage = parseFloat(data.toString().trim());
-            GETDATA.SetMemoryData(memoryUsage)
             const point = new Point('memory_usage')
-                .tag('host', system.host) // Replace with actual host identifier
+                .tag('host', system.host) 
+                .tag('systemname', system.name)
                 .floatField('usage', memoryUsage);
             writeApi.writePoint(point);
         }).stderr.on("data", (data) => {

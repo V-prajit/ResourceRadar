@@ -4,16 +4,19 @@ import {
   Routes,
   Route,
 } from "react-router-dom";
-import SystemUsageDisplay from './components/system_usage';
+
+import HomePage from './components/homepage';
 import MachinesForm from './components/form';
+import SystemDashboard from './components/cards';
 
 function App() {
   return (
     <>
       <Router>
         <Routes>
-          <Route exact path="/Machines" element={<SystemUsageDisplay />} />
-          <Route exact path ="/" element={<MachinesForm />} />
+          <Route exact path ="/" element={<HomePage />} />
+          <Route exact path ="/test" element={<MachinesForm />} />
+          <Route exact path ="/test2" element={<SystemDashboard />} />
         </Routes>
       </Router>
     </>

@@ -52,18 +52,20 @@ function MachinesForm() {
         CreateMachine();
         console.log('HandleSubmit called');
         setIsOpen(false);
+        setName("");
+        setPassword("");
+        setUsername("");
+        setPort("22");
+        setHost("");
     }
 
-    function VerifyDetails(){
-    
-    }
+
     return (
         <div>
-          {Machines ? Machines : 'There is no machine data available'}
           <br />
-          <button onClick={ () => { setIsOpen(true)}}>Add machine</button>
+          <button className = "ButtonCard" onClick={ () => { setIsOpen(!isOpen)}}>Add machine</button>
           { isOpen && (
-            <div>
+            <div className="FormCard system-cards">
                 <form onSubmit={HandleSubmit}>
                     <label>
                         Host Name:

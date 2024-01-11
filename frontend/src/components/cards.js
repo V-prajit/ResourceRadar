@@ -12,7 +12,7 @@ function SystemDashboard() {
         };
 
         fetchSystems(); 
-        const intervalId = setInterval(fetchSystems, 1000); // Fetch every 5000 ms (5 seconds)
+        const intervalId = setInterval(fetchSystems, 100); 
         return () => clearInterval(intervalId);
     }, []);
 
@@ -31,9 +31,9 @@ function SystemDashboard() {
 function SystemCard({ system }) {
     return (
         <div className="card">
-            <h3>{system.host}</h3>
-            <p>CPU Usage: {system.cpuUsage}</p>
-            <p>MEM Usage: {system.memUsage}</p>
+            <h3>Host IP: {system.host}</h3>
+            <p>CPU Usage: {system.cpuUsage}%</p>
+            <p>MEM Usage: {system.memUsage}MB</p>
         </div>
     );
 }

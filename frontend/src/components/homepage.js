@@ -3,9 +3,9 @@ import SystemDashboard from './cards';
 
 function HomePage(){
     return (
-        <div>
-            <MachinesForm />
+        <div className="BasicPage">
             <SystemDashboard />
+            <MachinesForm />
         </div>
     )
 }

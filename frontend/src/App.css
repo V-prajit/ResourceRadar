@@ -1,16 +1,32 @@
 body {
-      background-color: white;
+      background-color: gray;
       padding: 50px;
 }
 .system-cards {
       display: flex;
       flex-wrap: wrap;
-  }
+}
   
-  .card {
+.card {
       border: 1px solid #ddd;
       border-radius: 4px;
       padding: 20px;
       margin: 10px;
       width: 200px;
-  }  
+}  
+
+.ButtonCard {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 20px;
+      margin: 10px;
+      width: 200px;
+}
+
+.FormCard{
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 20px;
+      margin: 10px;
+      width: 50vw;
+}

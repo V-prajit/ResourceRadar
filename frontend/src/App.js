@@ -8,6 +8,7 @@ import {
 import HomePage from './components/homepage';
 import MachinesForm from './components/form';
 import SystemDashboard from './components/cards';
+import SystemDetails from './components/DetailedView';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route exact path ="/" element={<HomePage />} />
           <Route exact path ="/test" element={<MachinesForm />} />
           <Route exact path ="/test2" element={<SystemDashboard />} />
+          <Route path="/details/:host" element={<SystemDetails />} />
         </Routes>
       </Router>
     </>

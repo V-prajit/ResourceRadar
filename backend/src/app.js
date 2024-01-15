@@ -48,8 +48,12 @@ app.get('/resourceusage', async (req, res) => {
     }
 });
 
+app.get('/Graph', async (req, res) => {
+
+});
+
 setInterval(monitorAllSystems, 1000);
 
 app.listen(express_port, () => {
     console.log(`App running on port ${express_port}.`);
-  })
+})

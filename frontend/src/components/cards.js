@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 function SystemDashboard() {
     const [systems, setSystems] = useState([]);
@@ -29,8 +30,14 @@ function SystemDashboard() {
 }
 
 function SystemCard({ system }) {
+
+    const navigate = useNavigate();
+    const handleClick = () => {
+        navigate(`/details/${system.host}`);
+    };
+
     return (
-        <div className="card">
+        <div className="card" onClick={handleClick}>
             <h3>Host IP: {system.host}</h3>
             <p>CPU Usage: {system.cpuUsage}%</p>
             <p>MEM Usage: {system.memUsage}MB</p>

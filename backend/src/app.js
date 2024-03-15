@@ -11,8 +11,6 @@ const db_model = require('./API/postgres_connect.js');
 app.use(express.json())
 const VerifyDetails = require('./API/ssh_verification.js');
 
-
-
 app.get('/', (req, res) => {
     db_model.getMachines()
     .then(response => {
@@ -48,8 +46,10 @@ app.get('/resourceusage', async (req, res) => {
     }
 });
 
+
+
 setInterval(monitorAllSystems, 1000);
 
 app.listen(express_port, () => {
     console.log(`App running on port ${express_port}.`);
-  })
+})

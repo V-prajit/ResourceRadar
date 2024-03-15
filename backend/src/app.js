@@ -10,6 +10,9 @@ app.use(cors(corsOptions));
 const db_model = require('./API/postgres_connect.js');
 app.use(express.json())
 const VerifyDetails = require('./API/ssh_verification.js');
+const bodyParser = require('body-parser');
+app.use(bodyParser.json());
+const SendGraphData = require('./API/graph_query.js')
 
 app.get('/', (req, res) => {
     db_model.getMachines()
@@ -46,7 +49,24 @@ app.get('/resourceusage', async (req, res) => {
     }
 });
 
+app.post('/api/data/graph',async (req, res) => {
+    const { host, timeFrame} = req.body;
+    try{
+        const data = await SendGraphData(host, timeFrame);
+        res.status(200).json(data);
+    } catch(error){
+        console.error("Error retreiveing data:", error);
+        res.status(500).send('Error retreiveing data')
+    }
+    
+})
 
+app.delete('/api/machine/:host', (req, res) => {
+    const { host } = req.params;
+    db_model.deleteMachine(host)
+    .then(result => res.status(200).json({ message: result }))
+    .catch(error => res.status(500).json({ error: error.message }));
+});
 
 setInterval(monitorAllSystems, 1000);
 

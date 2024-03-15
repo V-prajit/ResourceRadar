@@ -37,7 +37,7 @@ function MachinesForm() {
             return response.text();
           })
           .then(data => {
-            alert(data);
+            console.log(data);
             GetMachine();
           });
       }

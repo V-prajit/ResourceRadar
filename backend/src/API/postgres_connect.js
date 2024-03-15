@@ -50,23 +50,28 @@ const createMachine = (body) => {
     );
   });
 };
-/*
-const deleteMachine = (id) => {
+
+const deleteMachine = (host) => {
   return new Promise(function (resolve, reject) {
     pool.query(
-      "DELETE FROM machines WHERE id = $1",
-      [id],
+      "DELETE FROM machines where host = $1 RETURNING *;",
+      [host],
       (error, results) => {
         if (error) {
           reject(error);
+        } else if (results && results.rowCount > 0) {
+          resolve(`Machine deleted successfully: ${JSON.stringify(results.rows[0])}`);
+        } else {
+          reject(new Error("No Machine found with the ip"));
         }
-        resolve(`Merchant deleted with ID: ${id}`);
       }
     );
   });
 };
-*/
+
+
 module.exports = {
   getMachines,
-  createMachine
+  createMachine,
+  deleteMachine
 }

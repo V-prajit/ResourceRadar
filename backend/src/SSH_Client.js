@@ -4,7 +4,6 @@ require('dotenv').config();
 const fetchCpuUsage = require('./system_stats/Cpu_stats');
 const fetchMemoryUsage = require('./system_stats/Memory_stats');
 
-require('dotenv').config();
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 const token = process.env.INFLUX_TOKEN;
 const org = process.env.INFLUX_ORG;

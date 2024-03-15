@@ -8,8 +8,7 @@ const fetchCpuUsage = (sshClient, system, writeApi) => {
                 console.error('SSH Command Execution Error:', err);
                 reject(err); // Reject the promise on error
                 return;
-            }
-
+           } 
             stream.on("data", (data) => {
                 const output = data.toString();
                 const cpuUsage = parseFloat(output).toFixed(1);

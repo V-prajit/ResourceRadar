@@ -5,9 +5,10 @@ import CpuSystemGraph from './CPUGraph';
 import MemUsageGraph from './MEMGraph';
 
 function SystemDetails(){
-    const { host } = useParams();
+    const { name } = useParams();
     const [timeFrame, setTimeFrame] = useState('1h');
     const [graphData, setGraphData] = useState(null)
+    const [systemInfo, setSystemInfo] = useState(null);
 
     const handleTimeFrameChange = (newTimeFrame) => {
         setTimeFrame(newTimeFrame);
@@ -20,7 +21,7 @@ function SystemDetails(){
                 'Content-Type' : 'application/json',
             },
             body: JSON.stringify({
-                host,
+                name,
                 timeFrame,
             }),
         })
@@ -33,14 +34,25 @@ function SystemDetails(){
 
     useEffect(() => {
         fetchData();
-    }, [host, timeFrame]);
+        // Fetch system info
+        fetch(`http://localhost:3001/api/machine/${encodeURIComponent(name)}`)
+            .then(response => response.json())
+            .then(data => setSystemInfo(data))
+            .catch(error => console.error('Error fetching system info:', error));
+    }, [name, timeFrame]);
+
+    if (!systemInfo) {
+        return <div>Loading...</div>;
+    }
 
     return(
         <div>
-            <p>The details of the system is {host}</p>
+            <h1>System Details</h1>
+            <p>Host Name: {name}</p>
+            <p>Host IP: {systemInfo.host}</p>
             <Dropdown timeFrame={timeFrame} onTimeFrameChange={handleTimeFrameChange} />
-            <CpuSystemGraph timeFrame = {timeFrame} graphData={graphData || []} />
-            <MemUsageGraph timeFrame = {timeFrame} graphData={graphData || []} />
+            <CpuSystemGraph timeFrame={timeFrame} graphData={graphData || []} />
+            <MemUsageGraph timeFrame={timeFrame} graphData={graphData || []} />
         </div>
     );
 };

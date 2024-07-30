@@ -31,41 +31,52 @@ const getMachines = async () => {
 
 const createMachine = (body) => {
   return new Promise(function (resolve, reject) {
-    const { Name, Host, Username, Password, Port } = body;
+    const { Name, Host, Username, Password, Port} = body;
     pool.query(
       "INSERT INTO machines (name, host, username, password, port) VALUES ($1, $2, $3, $4, $5) RETURNING *",
       [Name, Host, Username, Password, Port],
       (error, results) => {
         if (error) {
           reject(error);
-        }
-        if (results && results.rows) {
-          resolve(
-            `A new merchant has been added: ${JSON.stringify(results.rows[0])}`
-          );
+        } else if (results.rowCount === 0) {
+          reject(new Error("A machine with this name already exists"));
         } else {
-          reject(new Error("Something went wrong"));
+          resolve(`A new machine has been added: ${JSON.stringify(results.rows[0])}`);
         }
       }
     );
   });
 };
 
-const deleteMachine = (host) => {
+const deleteMachine = (name) => {
   return new Promise(function (resolve, reject) {
     pool.query(
-      "DELETE FROM machines where host = $1 RETURNING *;",
-      [host],
+      "DELETE FROM machines where name = $1 RETURNING *;",
+      [name],
       (error, results) => {
         if (error) {
           reject(error);
         } else if (results && results.rowCount > 0) {
-          resolve(`Machine deleted successfully: ${JSON.stringify(results.rows[0])}`);
+          resolve(results.rows[0]);
         } else {
-          reject(new Error("No Machine found with the ip"));
+          reject(new Error("No Machine found with the given name"));
         }
       }
     );
+  });
+};
+
+const getMachineDetails = (name) => {
+  return new Promise((resolve, reject) => {
+    pool.query('SELECT * FROM machines WHERE name = $1', [name], (error, results) => {
+      if (error) {
+        reject(error);
+      } else if (results.rows.length > 0) {
+        resolve(results.rows[0]);
+      } else {
+        resolve(null);
+      }
+    });
   });
 };
 
@@ -73,5 +84,6 @@ const deleteMachine = (host) => {
 module.exports = {
   getMachines,
   createMachine,
-  deleteMachine
+  deleteMachine,
+  getMachineDetails
 }

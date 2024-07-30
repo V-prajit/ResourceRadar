@@ -13,8 +13,7 @@ const fetchMemoryUsage = (sshClient, system, writeApi) => {
             stream.on("data", (data) => {
                 const memoryUsage = parseFloat(data.toString().trim());
                 const point = new Point('memory_usage')
-                    .tag('host', system.host)
-                    .tag('systemname', system.name)
+                    .tag('name', system.name)
                     .floatField('usage', memoryUsage);
 
                 writeApi.writePoint(point);

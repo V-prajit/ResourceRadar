@@ -1,0 +1,45 @@
+version: '3'
+services:
+  influxdb:
+    image: influxdb:latest
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=your_username
+      - DOCKER_INFLUXDB_INIT_PASSWORD=your_password
+      - DOCKER_INFLUXDB_INIT_ORG=server_stat
+      - DOCKER_INFLUXDB_INIT_BUCKET=Server_Stats
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=POSTGRESSECURE
+      - POSTGRES_DB=sshinfo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    environment:
+      - INFLUX_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
+      - INFLUX_ORG=server_stat
+      - INFLUX_BUCKET=Server_Stats
+      - PGUSER=postgres
+      - PGHOST=postgres
+      - PGDATABASE=sshinfo
+      - PGPASSWORD=POSTGRESSECURE
+      - PGPORT=5432
+    depends_on:
+      - influxdb
+      - postgres
+
+volumes:
+  influxdb-data:
+  postgres-data:

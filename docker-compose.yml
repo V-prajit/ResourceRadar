@@ -40,6 +40,15 @@ services:
       - influxdb
       - postgres
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"  # Expose port 80 for the frontend app
+    depends_on:
+      - backend  # Ensure backend starts before frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:3000 
+
 volumes:
   influxdb-data:
   postgres-data:

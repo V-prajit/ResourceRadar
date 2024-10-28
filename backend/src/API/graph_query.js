@@ -10,7 +10,7 @@ const bucket = process.env.INFLUX_BUCKET;
 const client = new InfluxDB({ url: 'http://localhost:8086', token: token });
 const queryApi = client.getQueryApi(org);
 
-const SendGraphData = async (host, timeFrame) => {
+const SendGraphData = async (name, timeFrame) => {
 
     const getWindowSize = (timeFrame) => {
         if(timeFrame.includes("1m")){
@@ -45,7 +45,7 @@ const SendGraphData = async (host, timeFrame) => {
 
     const fluxQuery = `from(bucket: "${bucket}")
         |> range(start: -${timeFrame})
-        |> filter(fn: (r) => r.host == "${host}")
+        |> filter(fn: (r) => r.host == "${name}")
         |> aggregateWindow(every: ${windowSize}, fn: mean, createEmpty: false)`;
 
     // Wrap the query operation in a Promise

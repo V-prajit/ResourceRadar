@@ -31,23 +31,23 @@ function SystemDashboard() {
     );
 }
 
-function SystemCard({ system}) {
+function SystemCard({system}) {
 
     const navigate = useNavigate();
     const handleCardClick = (e) => {
-        navigate(`/details/${system.host}`);
+        navigate(`/details/${system.name}`);
     };
 
     const handleEdit = (e) => {
         e.stopPropagation(); 
-        console.log('Edit', system.host);
+        console.log('Edit', system.name);
     };
 
     const handleDelete = (e) => {
         e.stopPropagation(); 
-        const confirmDelete = window.confirm(`Are you sure you want to delete the system with the host IP: ${system.host}?`);
+        const confirmDelete = window.confirm(`Are you sure you want to delete the system with the host IP: ${system.name}?`);
         if (confirmDelete) {
-            fetch(`http://localhost:3001/api/machine/${encodeURIComponent(system.host)}`, {
+            fetch(`http://localhost:3001/api/machine/${encodeURIComponent(system.name)}`, {
                 method: 'DELETE',
             })
             .then(response => {
@@ -63,12 +63,22 @@ function SystemCard({ system}) {
         }
     };
 
+    const isOffline = system.status === 'offline';
+
     return (
-        <div className="card" onClick={handleCardClick}>
-                <h3>Host IP: {system.host}</h3>
-                <p>CPU Usage: {system.cpuUsage}%</p>
-                <p>MEM Usage: {system.memUsage}MB</p>
-                <div style={{ textAlign: 'right' }}>
+        <div className={`card ${isOffline ? 'offline' : ''}`} onClick={handleCardClick}>
+            <h3>Host Name: {system.name}</h3>
+            <p>Host IP: {system.host}</p>
+            <p>Status: <span className={isOffline ? 'status-offline' : 'status-online'}>
+                {system.status}
+            </span></p>
+            {!isOffline && (
+                <>
+                    <p>CPU Usage: {system.cpuUsage}%</p>
+                    <p>MEM Usage: {system.memUsage}MB</p>
+                </>
+            )}
+            <div style={{ textAlign: 'right' }}>
                 <button onClick={handleEdit}>
                     <FontAwesomeIcon icon={faEdit} /> Edit
                 </button>
@@ -76,7 +86,6 @@ function SystemCard({ system}) {
                     <FontAwesomeIcon icon={faTrashAlt} /> Delete
                 </button>
             </div>
-
         </div>
     );
 }

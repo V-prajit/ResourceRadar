@@ -18,7 +18,7 @@ function App() {
           <Route exact path ="/" element={<HomePage />} />
           <Route exact path ="/test" element={<MachinesForm />} />
           <Route exact path ="/test2" element={<SystemDashboard />} />
-          <Route path="/details/:host" element={<SystemDetails />} />
+          <Route path="/details/:name" element={<SystemDetails />} />
         </Routes>
       </Router>
     </>

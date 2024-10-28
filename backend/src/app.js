@@ -13,6 +13,7 @@ const VerifyDetails = require('./API/ssh_verification.js');
 const bodyParser = require('body-parser');
 app.use(bodyParser.json());
 const SendGraphData = require('./API/graph_query.js')
+const {monitorAllSystems, SendResources, deleteInfluxData} = require('./SSH_Client.js')
 
 app.get('/', (req, res) => {
     db_model.getMachines()
@@ -36,7 +37,6 @@ app.post('/sshverify', async(req, res) => {
     }
 });
 
-const {monitorAllSystems, SendResources} = require('./SSH_Client.js')
 
 app.get('/resourceusage', async (req, res) => {
     try {
@@ -61,11 +61,27 @@ app.post('/api/data/graph',async (req, res) => {
     
 })
 
-app.delete('/api/machine/:host', (req, res) => {
-    const { host } = req.params;
-    db_model.deleteMachine(host)
-    .then(result => res.status(200).json({ message: result }))
-    .catch(error => res.status(500).json({ error: error.message }));
+app.delete('/api/machine/:name', async (req, res) => {
+    const { name } = req.params;
+    try {
+        // First, get the machine details from PostgreSQL
+        const machine = await db_model.getMachineDetails(name);
+        
+        if (!machine) {
+          return res.status(404).json({ error: 'Machine not found' });
+        }
+    
+        // Delete from PostgreSQL
+        await db_model.deleteMachine(name);
+        
+        // Delete from InfluxDB
+        await deleteInfluxData(name, machine.host);
+    
+        res.status(200).json({ message: `Machine ${name} deleted successfully from PostgreSQL and InfluxDB` });
+      } catch (error) {
+        console.error('Error during machine deletion:', error);
+        res.status(500).json({ error: error.message });
+      }
 });
 
 setInterval(monitorAllSystems, 1000);

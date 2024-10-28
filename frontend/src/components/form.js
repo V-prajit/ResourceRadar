@@ -25,27 +25,31 @@ function MachinesForm() {
     }
 
     function CreateMachine(){
-        console.log({ Name, Host, Username, Password, Port }); // Log the state before sending
-        fetch('http://localhost:3001/sshverify', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ Name, Host, Username, Password, Port }),
+      fetch('http://localhost:3001/sshverify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ Name, Host, Username, Password, Port}),
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.text();
         })
-          .then(response => {
-            return response.text();
-          })
-          .then(data => {
-            console.log(data);
-            GetMachine();
-          });
-      }
-    
-
-    useEffect(() => {
-    GetMachine();
-    }, []);
+        .then(data => {
+          console.log(data);
+          GetMachine();
+        })
+        .catch(error => {
+          if (error.message.includes("already exists")) {
+            alert("A machine with this name already exists. Please choose a different name.");
+          } else {
+            console.error('Error:', error);
+          }
+        });
+    }
 
     function HandleSubmit(e) {
         e.preventDefault();

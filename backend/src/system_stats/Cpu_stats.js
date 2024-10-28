@@ -13,8 +13,7 @@ const fetchCpuUsage = (sshClient, system, writeApi) => {
                 const output = data.toString();
                 const cpuUsage = parseFloat(output).toFixed(1);
                 const point = new Point('cpu_usage')
-                    .tag('host', system.host)
-                    .tag('systemname', system.name)
+                    .tag('name', system.name)
                     .floatField('usage', cpuUsage);
 
                 writeApi.writePoint(point);

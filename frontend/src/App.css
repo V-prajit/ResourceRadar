@@ -30,3 +30,18 @@ body {
       margin: 10px;
       width: 50vw;
 }
+
+.card.offline {
+      background-color: #f8d7da;
+      border-color: #f5c6cb;
+  }
+  
+  .status-online {
+      color: green;
+      font-weight: bold;
+  }
+  
+  .status-offline {
+      color: red;
+      font-weight: bold;
+  }

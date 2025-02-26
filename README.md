@@ -2,8 +2,6 @@
 
 A real-time server monitoring application that allows you to track CPU and memory usage across multiple remote servers through a clean web interface.
 
-![Server Status Monitor](https://github.com/username/server_status/raw/main/docs/images/dashboard.png)
-
 ## Features
 
 - **Real-time Monitoring**: Track CPU and memory usage on remote servers

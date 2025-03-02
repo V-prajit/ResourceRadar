@@ -5,3 +5,4 @@ backend/db_test.js
 backend/src/.env
 backend/.env
 backend/src/API/.env
+CLAUDE.md

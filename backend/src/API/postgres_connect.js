@@ -80,10 +80,29 @@ const getMachineDetails = (name) => {
   });
 };
 
+const updateMachine = (name, body) => {
+  return new Promise(function (resolve, reject) {
+    const { Host, Username, Password, Port } = body;
+    pool.query(
+      "UPDATE machines SET host = $1, username = $2, password = $3, port = $4 WHERE name = $5 RETURNING *",
+      [Host, Username, Password, Port, name],
+      (error, results) => {
+        if (error) {
+          reject(error);
+        } else if (results.rowCount === 0) {
+          reject(new Error("No machine found with the given name"));
+        } else {
+          resolve(results.rows[0]);
+        }
+      }
+    );
+  });
+};
 
 module.exports = {
   getMachines,
   createMachine,
   deleteMachine,
-  getMachineDetails
+  getMachineDetails,
+  updateMachine
 }

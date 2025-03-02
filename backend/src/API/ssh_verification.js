@@ -11,8 +11,11 @@ const VerifyDetails = (forminput) => {
             password: forminput.Password
         };
         check.on('error', function(err){
+            console.error(`SSH verification error for ${forminput.Name} (${forminput.Host}:${forminput.Port}):`);
+            console.error(`Error message: ${err.message}`);
+            console.error(`Error level: ${err.level}`);
             check.end();
-            reject(false); // Reject the promise on error
+            reject(err); // Reject the promise with the actual error
         });
         check.on("ready", () => {
             console.log("Client info verified");

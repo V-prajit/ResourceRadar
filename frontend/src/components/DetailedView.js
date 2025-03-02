@@ -15,7 +15,8 @@ function SystemDetails(){
     };
 
     const fetchData = () => {
-        fetch('http://localhost:3001/api/data/graph', {
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        fetch(`${apiUrl}/api/data/graph`, {
             method: 'POST',
             headers: {
                 'Content-Type' : 'application/json',
@@ -35,7 +36,8 @@ function SystemDetails(){
     useEffect(() => {
         fetchData();
         // Fetch system info
-        fetch(`http://localhost:3001/api/machine/${encodeURIComponent(name)}`)
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        fetch(`${apiUrl}/api/machine/${encodeURIComponent(name)}`)
             .then(response => response.json())
             .then(data => setSystemInfo(data))
             .catch(error => console.error('Error fetching system info:', error));

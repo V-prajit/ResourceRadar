@@ -10,7 +10,8 @@ function MachinesForm() {
     const [isOpen, setIsOpen] = useState(false);
 
     function GetMachine(){
-        fetch("http://localhost:3001/")
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        fetch(`${apiUrl}/`)
             .then(response => {
                 return response.text();
             })
@@ -25,7 +26,8 @@ function MachinesForm() {
     }
 
     function CreateMachine(){
-      fetch('http://localhost:3001/sshverify', {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      fetch(`${apiUrl}/sshverify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

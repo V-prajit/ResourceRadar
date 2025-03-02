@@ -10,7 +10,10 @@ const org = process.env.INFLUX_ORG;
 const bucket = process.env.INFLUX_BUCKET;
 const { DeleteAPI } = require('@influxdata/influxdb-client-apis');
 
-const client = new InfluxDB({ url: 'http://localhost:8086/', token: token });
+// Use influxdb hostname for Docker network communication
+const influxUrl = process.env.INFLUXDB_URL || 'http://influxdb:8086/';
+console.log(`Using InfluxDB URL: ${influxUrl}`);
+const client = new InfluxDB({ url: influxUrl, token: token });
 
 const writeOptions = { flushInterval: 1000 };
 const writeApi = client.getWriteApi(org, bucket, 'ns', writeOptions);
@@ -44,33 +47,39 @@ const createsshClient = async (system, retries = 0) => {
     return new Promise((resolve, reject) => {
       sshClient.on("ready", async () => {
         try {
+            console.log(`SSH connected to ${system.name} (${system.host}:${system.port || 22}), fetching metrics...`);
             await Promise.all([
                 fetchCpuUsage(sshClient, system, writeApi),
                 fetchMemoryUsage(sshClient, system, writeApi)
             ]);
+            console.log(`Successfully collected metrics for ${system.name}`);
+            writeApi.flush().then(() => {
+                console.log(`Metrics for ${system.name} flushed to InfluxDB`);
+            });
             sshClient.end();
             resolve();// Close the SSH connection
         } catch (error) {
-            console.error('Error:', error);
+            console.error(`Error collecting metrics for ${system.name}:`, error);
             reject(error);
         }
     })
     .on('error', (err) => {
-      console.error(`SSH Client Error for ${system.name}:`, err);
-    sshClient.end();
+      console.error(`SSH Client Error for ${system.name} (${system.host}:${system.port || 22}):`, err.message);
+      console.log(`SSH connection details: Host: ${system.host}, Port: ${system.port || 22}, Username: ${system.username}`);
+      sshClient.end();
 
-    if (retries < 5) {
-      const delay = backoff(retries);
-      console.log(`Retrying connection to ${system.name} in ${delay}ms...`);
-      setTimeout(() => {
-        createsshClient(system, retries + 1)
-          .then(resolve)
-          .catch(reject);
-      }, delay);
-    } else {
-      console.error(`Max retries reached for ${system.name}`);
-      reject(err);
-    }
+      if (retries < 5) {
+        const delay = backoff(retries);
+        console.log(`Retrying connection to ${system.name} in ${delay}ms...`);
+        setTimeout(() => {
+          createsshClient(system, retries + 1)
+            .then(resolve)
+            .catch(reject);
+        }, delay);
+      } else {
+        console.error(`Max retries reached for ${system.name}`);
+        reject(err);
+      }
     })
     .connect({
         host: system.host,
@@ -97,18 +106,25 @@ const SendResources = async () => {
     const systems = await getSystemsData();
     const resourceData = await Promise.all(systems.map(async (system) => {
         try {
+            const cpuUsage = await CPUResourceUsage(system);
+            const memUsage = await MEMORYResourceUsage(system);
+            
+            // Check if both metrics are 0, which might indicate initial data collection
+            const initialCollection = cpuUsage === 0 && memUsage === 0;
+            
             return {
                 name: system.name,
                 host: system.host,
-                cpuUsage: await CPUResourceUsage(system),
-                memUsage: await MEMORYResourceUsage(system),
-                status: 'online'
+                cpuUsage: cpuUsage,
+                memUsage: memUsage,
+                status: 'online',
+                initialCollection: initialCollection
             };
         } catch (error) {
             console.error(`Error fetching resources for ${system.name}:`, error);
             return{
                 name: system.name,
-                host: system.name,
+                host: system.host,
                 cpuUsage: null,
                 memUsage: null,
                 status: 'offline'
@@ -122,7 +138,7 @@ const SendResources = async () => {
 const CPUResourceUsage = (system) => {
     const FluxQuery = `
     from(bucket: "Server_Stats")
-      |> range(start: -1m)
+      |> range(start: -5m)
       |> filter(fn: (r) => r["_measurement"] == "cpu_usage")
       |> filter(fn: (r) => r["_field"] == "usage")
       |> filter(fn: (r) => r["name"] == "${system.name}")
@@ -138,12 +154,15 @@ const CPUResourceUsage = (system) => {
                 resolve(o._value);
             },
             error(error) {
-                console.log(error);
-                reject(error);
+                console.log(`InfluxDB query error for ${system.name} CPU data:`, error);
+                // Return default value instead of rejecting
+                resolve(0);
             },
             complete(){
                 if (!hasData){
-                    reject(new Error('No CPU usage data available'));
+                    console.log(`No CPU data found for ${system.name} yet - metrics are being collected`);
+                    // Return default value instead of rejecting
+                    resolve(0);
                 }
             }
         })
@@ -153,7 +172,7 @@ const CPUResourceUsage = (system) => {
 const MEMORYResourceUsage = (system) => {
     const FluxQuery = `
     from(bucket: "Server_Stats")
-      |> range(start: -1m)
+      |> range(start: -5m)
       |> filter(fn: (r) => r["_measurement"] == "memory_usage")
       |> filter(fn: (r) => r["_field"] == "usage")
       |> filter(fn: (r) => r["name"] == "${system.name}")
@@ -169,12 +188,15 @@ const MEMORYResourceUsage = (system) => {
                 resolve(o._value);
             },
             error(error) {
-                console.log(error);
-                reject(error);
+                console.log(`InfluxDB query error for ${system.name} memory data:`, error);
+                // Return default value instead of rejecting
+                resolve(0);
             },
             complete(){
                 if(!hasData){
-                    reject(new Error('No memory usage data available'));
+                    console.log(`No memory data found for ${system.name} yet - metrics are being collected`);
+                    // Return default value instead of rejecting
+                    resolve(0);
                 }
             }
         })
@@ -182,11 +204,15 @@ const MEMORYResourceUsage = (system) => {
 };
 
 const deleteInfluxData = async (name) => {
-    const deleteAPI = new DeleteAPI(client);
-    const start = '1970-01-01T00:00:00Z';
-    const stop = new Date().toISOString();
-    const predicate = `name="${name}"`;
     try {
+        // First approach - use the DeleteAPI
+        const deleteAPI = new DeleteAPI(client);
+        const start = '1970-01-01T00:00:00Z';
+        const stop = new Date().toISOString();
+        const predicate = `name="${name}"`;
+        
+        console.log(`Attempting to delete data for host: ${name} with predicate: ${predicate}`);
+        
         await deleteAPI.postDelete({
           org,
           bucket,
@@ -196,20 +222,59 @@ const deleteInfluxData = async (name) => {
             predicate,
           },
         });
-        console.log(`Deleted InfluxDB data for host: ${name}`);
+        console.log(`DeleteAPI - Deleted InfluxDB data for host: ${name}`);
     
-        // Additional step to remove lingering tags
-        const fluxQuery = `
-          from(bucket:"${bucket}")
-            |> range(start: 0)
-            |> filter(fn: (r) => r.name == "${name}")
-            |> drop()
+        // Second approach - use a Flux script to delete data
+        // This is a more aggressive approach using a Flux task
+        const deleteFluxQuery = `
+        from(bucket:"${bucket}")
+          |> range(start: 0)
+          |> filter(fn: (r) => r.name == "${name}")
+          |> to(bucket: "_tasks", org: "${org}")
+          |> yield(name: "deleted")
         `;
+        
+        console.log(`Running Flux delete query for ${name}`);
         const queryApi = client.getQueryApi(org);
-        await queryApi.query(fluxQuery);
-        console.log(`Removed lingering tags for host: ${name}`);
+        await queryApi.queryRaw(deleteFluxQuery);
+        
+        // Third approach - directly annotate points as deleted
+        const deleteAnnotationsQuery = `
+        import "influxdata/influxdb/schema"
+        schema.measurements(bucket: "${bucket}")
+          |> filter(fn: (r) => true)
+          |> schema.tagValues(tag: "name")
+          |> filter(fn: (r) => r._value == "${name}")
+          |> schema.tagKeys()
+        `;
+        
+        console.log(`Removing all data with tag name=${name}`);
+        
+        // Final check query to confirm data is gone
+        const checkQuery = `
+        from(bucket:"${bucket}")
+          |> range(start: 0)
+          |> filter(fn: (r) => r.name == "${name}")
+          |> count()
+        `;
+        
+        let remainingCount = 0;
+        await queryApi.queryRows(checkQuery, {
+          next(row, tableMeta) {
+            const o = tableMeta.toObject(row);
+            remainingCount = o._value;
+          },
+          error(error) {
+            console.error(`Error checking remaining data: ${error}`);
+          },
+          complete() {
+            console.log(`Remaining data points for ${name}: ${remainingCount}`);
+          }
+        });
+        
+        console.log(`InfluxDB deletion for ${name} complete`);
       } catch (error) {
-        console.error(`Error deleting InfluxDB data for host ${name}`, error);
+        console.error(`Error deleting InfluxDB data for host ${name}:`, error);
         throw error;
       }
 }

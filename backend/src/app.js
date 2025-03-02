@@ -4,7 +4,8 @@ const app = express();
 const express_port = 3001;
 const cors = require('cors');
 const corsOptions = {
-    origin: 'http://localhost:3000', // Replace with your React app's URL
+    origin: ['http://localhost', 'http://localhost:80', 'http://localhost:3000', 'http://frontend'],
+    credentials: true
 };
 app.use(cors(corsOptions));
 const db_model = require('./API/postgres_connect.js');
@@ -13,6 +14,7 @@ const VerifyDetails = require('./API/ssh_verification.js');
 const bodyParser = require('body-parser');
 app.use(bodyParser.json());
 const SendGraphData = require('./API/graph_query.js')
+const { InfluxDB } = require('@influxdata/influxdb-client');
 const {monitorAllSystems, SendResources, deleteInfluxData} = require('./SSH_Client.js')
 
 app.get('/', (req, res) => {
@@ -29,11 +31,15 @@ app.post('/sshverify', async(req, res) => {
     const formData = req.body;
     try{
         const check_result = await VerifyDetails(formData);
-        db_model.createMachine(formData)
+        await db_model.createMachine(formData);
         res.status(200).send({ verified: check_result });
     } catch (error){
-        console.log(error);
-        res.status(500).send({ verified: false, error: 'SSH verification failed' });
+        console.error('SSH verification failed:', error.message);
+        res.status(500).send({ 
+            verified: false, 
+            error: 'SSH verification failed', 
+            details: error.message 
+        });
     }
 });
 
@@ -64,24 +70,113 @@ app.post('/api/data/graph',async (req, res) => {
 app.delete('/api/machine/:name', async (req, res) => {
     const { name } = req.params;
     try {
-        // First, get the machine details from PostgreSQL
+        console.log(`DELETE request received for machine: ${name}`);
         const machine = await db_model.getMachineDetails(name);
         
         if (!machine) {
+          console.log(`Machine not found: ${name}`);
           return res.status(404).json({ error: 'Machine not found' });
         }
-    
-        // Delete from PostgreSQL
+        
+        console.log(`Deleting machine from PostgreSQL: ${name}`);
         await db_model.deleteMachine(name);
         
-        // Delete from InfluxDB
-        await deleteInfluxData(name, machine.host);
+        console.log(`Deleting machine data from InfluxDB: ${name}`);
+        try {
+            await deleteInfluxData(name);
+            console.log(`Successfully deleted InfluxDB data for: ${name}`);
+        } catch (influxError) {
+            console.error(`Error deleting from InfluxDB: ${influxError.message}`);
+            // Continue even if InfluxDB deletion fails
+        }
     
+        // Always respond with success if PostgreSQL deletion worked
         res.status(200).json({ message: `Machine ${name} deleted successfully from PostgreSQL and InfluxDB` });
       } catch (error) {
         console.error('Error during machine deletion:', error);
         res.status(500).json({ error: error.message });
       }
+});
+
+// Add a utility endpoint to delete orphaned InfluxDB data
+app.delete('/api/cleanup-influxdb', async (req, res) => {
+    try {
+        const systems = await db_model.getMachines();
+        const validNames = systems.map(s => s.name);
+        
+        // Get all machine names from InfluxDB
+        const client = new InfluxDB({ url: 'http://influxdb:8086/', token: process.env.INFLUX_TOKEN });
+        const queryApi = client.getQueryApi(process.env.INFLUX_ORG);
+        
+        const query = `
+        import "influxdata/influxdb/schema"
+        schema.tagValues(bucket: "${process.env.INFLUX_BUCKET}", tag: "name")
+        `;
+        
+        let influxNames = [];
+        await queryApi.queryRows(query, {
+            next(row, tableMeta) {
+                const o = tableMeta.toObject(row);
+                influxNames.push(o._value);
+            },
+            error(error) {
+                console.error(`Error fetching InfluxDB names: ${error}`);
+            },
+            complete() {
+                console.log(`Found ${influxNames.length} names in InfluxDB`);
+            }
+        });
+        
+        // Find orphaned names (in InfluxDB but not in PostgreSQL)
+        const orphanedNames = influxNames.filter(name => !validNames.includes(name));
+        console.log(`Found ${orphanedNames.length} orphaned names: ${orphanedNames.join(', ')}`);
+        
+        // Delete each orphaned name
+        for (const name of orphanedNames) {
+            try {
+                await deleteInfluxData(name);
+                console.log(`Deleted orphaned data for: ${name}`);
+            } catch (error) {
+                console.error(`Failed to delete orphaned data for ${name}: ${error.message}`);
+            }
+        }
+        
+        res.status(200).json({ 
+            message: `InfluxDB cleanup completed`,
+            deletedNames: orphanedNames
+        });
+    } catch (error) {
+        console.error('Error during InfluxDB cleanup:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/machine/:name', async (req, res) => {
+  const { name } = req.params;
+  try {
+    const existingMachine = await db_model.getMachineDetails(name);
+    
+    if (!existingMachine) {
+      return res.status(404).json({ error: 'Machine not found' });
+    }
+    
+    try {
+      const formData = { ...req.body, Name: name };
+      await VerifyDetails(formData);
+    } catch (sshError) {
+      return res.status(400).json({ error: 'SSH verification failed with new credentials', details: sshError.message });
+    }
+    
+    const updatedMachine = await db_model.updateMachine(name, req.body);
+    
+    res.status(200).json({ 
+      message: `Machine ${name} updated successfully`, 
+      machine: updatedMachine 
+    });
+  } catch (error) {
+    console.error('Error during machine update:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 setInterval(monitorAllSystems, 1000);

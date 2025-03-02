@@ -27,6 +27,8 @@ services:
 
   backend:
     build: ./backend
+    ports:
+      - "3001:3001"
     environment:
       - INFLUX_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
       - INFLUX_ORG=server_stat
@@ -36,6 +38,8 @@ services:
       - PGDATABASE=sshinfo
       - PGPASSWORD=POSTGRESSECURE
       - PGPORT=5432
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - influxdb
       - postgres
@@ -47,7 +51,7 @@ services:
     depends_on:
       - backend  # Ensure backend starts before frontend
     environment:
-      - REACT_APP_API_URL=http://localhost:3000 
+      - REACT_APP_API_URL=http://backend:3001
 
 volumes:
   influxdb-data:

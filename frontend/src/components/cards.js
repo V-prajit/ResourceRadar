@@ -3,22 +3,27 @@ import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import EditForm from './EditForm';
+import { io } from 'socket.io-client';
 
 function SystemDashboard() {
     const [systems, setSystems] = useState([]);
+    const [socket, setSocket] = useState(null);
 
     useEffect(() => {
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-        const fetchSystems= () => {
-            fetch(`${apiUrl}/resourceusage`)
-            .then(response => response.json())
-            .then(data => setSystems(data))
-            .catch(error => console.error('Error', error));
-        };
+        // Create socket connection
+        const newSocket = io(apiUrl);
+        setSocket(newSocket);
 
-        fetchSystems(); 
-        const intervalId = setInterval(fetchSystems, 100); 
-        return () => clearInterval(intervalId);
+        // Listen for resource data updates
+        newSocket.on('resourceData', (data) => {
+            setSystems(data);
+        });
+
+        // Clean up on component unmount
+        return () => {
+            newSocket.disconnect();
+        };
     }, []);
 
     return (

@@ -6,8 +6,10 @@ const token = process.env.INFLUX_TOKEN;
 const org = process.env.INFLUX_ORG;
 const bucket = process.env.INFLUX_BUCKET;
 
-// Initialize InfluxDB client
-const client = new InfluxDB({ url: 'http://localhost:8086', token: token });
+// Initialize InfluxDB client - use influxdb host name for Docker networking
+const influxUrl = process.env.INFLUXDB_URL || 'http://influxdb:8086/';
+console.log(`Graph query using InfluxDB URL: ${influxUrl}`);
+const client = new InfluxDB({ url: influxUrl, token: token });
 const queryApi = client.getQueryApi(org);
 
 const SendGraphData = async (name, timeFrame) => {
@@ -45,8 +47,10 @@ const SendGraphData = async (name, timeFrame) => {
 
     const fluxQuery = `from(bucket: "${bucket}")
         |> range(start: -${timeFrame})
-        |> filter(fn: (r) => r.host == "${name}")
+        |> filter(fn: (r) => r.name == "${name}")
         |> aggregateWindow(every: ${windowSize}, fn: mean, createEmpty: false)`;
+    
+    console.log(`Running query for ${name} with timeframe ${timeFrame}: ${fluxQuery}`);
 
     // Wrap the query operation in a Promise
     return new Promise((resolve, reject) => {

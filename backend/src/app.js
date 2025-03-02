@@ -1,6 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const app = express();
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require('socket.io');
 const express_port = 3001;
 const cors = require('cors');
 const corsOptions = {
@@ -16,6 +19,11 @@ app.use(bodyParser.json());
 const SendGraphData = require('./API/graph_query.js')
 const { InfluxDB } = require('@influxdata/influxdb-client');
 const {monitorAllSystems, SendResources, deleteInfluxData} = require('./SSH_Client.js')
+
+// Set up Socket.IO
+const io = new Server(server, {
+  cors: corsOptions
+});
 
 app.get('/', (req, res) => {
     db_model.getMachines()
@@ -179,8 +187,43 @@ app.put('/api/machine/:name', async (req, res) => {
   }
 });
 
-setInterval(monitorAllSystems, 1000);
+// Set up Socket.IO connection events
+io.on('connection', (socket) => {
+    console.log('A client connected');
+    
+    // Send initial resource data to the client on connection
+    SendResources().then(data => {
+        socket.emit('resourceData', data);
+    });
+    
+    // Handle graph data requests
+    socket.on('getGraphData', async (data) => {
+        try {
+            const graphData = await SendGraphData(data.host, data.timeFrame);
+            socket.emit('graphData', graphData);
+        } catch (error) {
+            console.error("Error retrieving graph data:", error);
+            socket.emit('error', { message: 'Error retrieving graph data' });
+        }
+    });
+    
+    // Handle disconnect
+    socket.on('disconnect', () => {
+        console.log('A client disconnected');
+    });
+});
 
-app.listen(express_port, () => {
-    console.log(`App running on port ${express_port}.`);
-})
+// Monitor systems and broadcast updates
+const monitorAndBroadcast = async () => {
+    await monitorAllSystems();
+    const resourceData = await SendResources();
+    io.emit('resourceData', resourceData);
+};
+
+// Set up interval for monitoring and broadcasting
+setInterval(monitorAndBroadcast, 1000);
+
+// Use server.listen instead of app.listen for Socket.IO
+server.listen(express_port, () => {
+    console.log(`Server running with WebSockets on port ${express_port}.`);
+});

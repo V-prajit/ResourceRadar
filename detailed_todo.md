@@ -106,3 +106,22 @@
 - [ ] Implement automated CI/CD pipeline
 - [ ] Add performance benchmarking
 - [ ] Create security testing protocol
+
+## 14. Implement Event-Driven Architecture
+- [ ] Set up Kafka for message queue processing
+- [ ] Create producers for system metrics collection
+- [ ] Implement consumers for metrics processing
+- [ ] Add WebSocket server to backend
+- [ ] Update frontend to use WebSocket connection
+- [ ] Remove polling-based updates
+- [ ] Implement reconnection logic for WebSockets
+- [ ] Test real-time performance improvements
+
+## 15. AWS Deployment
+- [ ] Set up EC2 instance(s)
+- [ ] Configure Docker on EC2
+- [ ] Set up CI/CD pipeline for deployment
+- [ ] Create deployment scripts
+- [ ] Configure proper networking and security groups
+- [ ] Set up monitoring for the EC2 instance
+- [ ] Document the deployment process

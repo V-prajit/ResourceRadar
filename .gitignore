@@ -6,3 +6,6 @@ backend/src/.env
 backend/.env
 backend/src/API/.env
 CLAUDE.md
+/backend/node_modules
+/backend/node_modules
+/backend/node_modules/ws/lib

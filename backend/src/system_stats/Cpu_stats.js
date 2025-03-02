@@ -3,38 +3,57 @@ const { Point } = require('@influxdata/influxdb-client')
 
 const fetchCpuUsage = (sshClient, system, writeApi) => {
     return new Promise((resolve, reject) => {
-        // Try a more generic command that should work across Linux distros
-        sshClient.exec("cat /proc/stat | grep '^cpu ' | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'", (err, stream) => {
+        // Use a continuous top command with a 0.5 second delay
+        // This provides more consistent monitoring without starting/stopping processes
+        sshClient.exec("top -b -d 0.5 -n 3 | grep '%Cpu'", (err, stream) => {
             if (err) {
                 console.error(`SSH Command Execution Error for ${system.name}:`, err);
                 reject(err);
                 return;
-           } 
+            }
             
             let dataReceived = false;
+            let output = '';
+            
             stream.on("data", (data) => {
                 dataReceived = true;
-                const output = data.toString().trim();
-                console.log(`Raw CPU data for ${system.name}: "${output}"`);
+                output += data.toString();
                 
-                // Parse the output to a float and fix to 1 decimal place
-                let cpuUsage = parseFloat(output);
+                // Process each line as it comes in
+                const lines = output.split('\n').filter(line => line.includes('%Cpu'));
                 
-                if (isNaN(cpuUsage)) {
-                    console.error(`Invalid CPU usage value for ${system.name}: "${output}"`);
-                    cpuUsage = 0; // Default to 0 if we can't parse
-                } else {
-                    cpuUsage = cpuUsage.toFixed(1);
-                }
-                
-                console.log(`Processed CPU usage for ${system.name}: ${cpuUsage}`);
-                
-                const point = new Point('cpu_usage')
-                    .tag('name', system.name)
-                    .floatField('usage', cpuUsage);
+                // Only process the last reading which should be the most accurate
+                if (lines.length >= 2) {
+                    const lastLine = lines[lines.length - 1];
+                    
+                    // Extract CPU usage - top shows either "us" (user) + "sy" (system) or just "%Cpu(s):"
+                    let cpuUsage = 0;
+                    if (lastLine.includes('us') && lastLine.includes('sy')) {
+                        // Format: "%Cpu(s):  5.9 us,  2.4 sy, ..."
+                        const userMatch = lastLine.match(/(\d+\.\d+)\s+us/);
+                        const sysMatch = lastLine.match(/(\d+\.\d+)\s+sy/);
+                        
+                        if (userMatch && sysMatch) {
+                            const userCpu = parseFloat(userMatch[1]);
+                            const sysCpu = parseFloat(sysMatch[1]);
+                            cpuUsage = userCpu + sysCpu;
+                        }
+                    } else {
+                        // Alternative format: "%Cpu(s): 12.3 "
+                        const match = lastLine.match(/%Cpu\(s\):\s+(\d+\.\d+)/);
+                        if (match) {
+                            cpuUsage = parseFloat(match[1]);
+                        }
+                    }
+                    
+                    console.log(`Processed CPU usage for ${system.name}: ${cpuUsage}`);
+                    
+                    const point = new Point('cpu_usage')
+                        .tag('name', system.name)
+                        .floatField('usage', cpuUsage);
 
-                writeApi.writePoint(point);
-                resolve();
+                    writeApi.writePoint(point);
+                }
             });
 
             stream.on('close', () => {
@@ -45,13 +64,13 @@ const fetchCpuUsage = (sshClient, system, writeApi) => {
                         .tag('name', system.name)
                         .floatField('usage', 0);
                     writeApi.writePoint(point);
-                    resolve();
                 }
+                resolve();
             });
 
             stream.stderr.on("data", (data) => {
                 console.error(`SSH STDERR for ${system.name} CPU:`, data.toString());
-            })
+            });
         });
     });
 };

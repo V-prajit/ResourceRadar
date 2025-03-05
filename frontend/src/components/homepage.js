@@ -29,7 +29,12 @@ function HomePage(){
     
     // Fetch systems to check if any exist
     useEffect(() => {
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        // Dynamically determine API URL - try environment variable first, then fall back to window.location
+        let apiUrl = process.env.REACT_APP_API_URL;
+        if (!apiUrl) {
+            const hostname = window.location.hostname;
+            apiUrl = `http://${hostname}:3001`;
+        }
         console.log("Connecting to API at:", apiUrl);
         fetch(`${apiUrl}/`)
             .then(response => response.json())

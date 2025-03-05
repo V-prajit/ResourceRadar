@@ -1,4 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { 
+    Typography,
+    Button,
+    TextField,
+    Box,
+    Collapse,
+    Card,
+    CardContent,
+    InputAdornment,
+    IconButton,
+    Grid,
+    Alert,
+    Divider
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import SaveIcon from '@mui/icons-material/Save';
+import ComputerIcon from '@mui/icons-material/Computer';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 function MachinesForm() {
     const [Machines, setMachines] = useState(false);
@@ -8,6 +27,8 @@ function MachinesForm() {
     const [Password, setPassword] = useState("");
     const [Port, setPort] = useState("22");
     const [isOpen, setIsOpen] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     function GetMachine(){
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
@@ -26,6 +47,7 @@ function MachinesForm() {
     }
 
     function CreateMachine(){
+      setIsSubmitting(true);
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
       fetch(`${apiUrl}/sshverify`, {
         method: 'POST',
@@ -43,6 +65,7 @@ function MachinesForm() {
         .then(data => {
           console.log(data);
           GetMachine();
+          resetForm();
         })
         .catch(error => {
           if (error.message.includes("already exists")) {
@@ -50,13 +73,13 @@ function MachinesForm() {
           } else {
             console.error('Error:', error);
           }
+        })
+        .finally(() => {
+          setIsSubmitting(false);
         });
     }
 
-    function HandleSubmit(e) {
-        e.preventDefault();
-        CreateMachine();
-        console.log('HandleSubmit called');
+    function resetForm() {
         setIsOpen(false);
         setName("");
         setPassword("");
@@ -65,60 +88,140 @@ function MachinesForm() {
         setHost("");
     }
 
+    function HandleSubmit(e) {
+        e.preventDefault();
+        CreateMachine();
+    }
 
     return (
-        <div>
-          <br />
-          <button className = "ButtonCard" onClick={ () => { setIsOpen(!isOpen)}}>Add machine</button>
-          { isOpen && (
-            <div className="FormCard system-cards">
-                <form onSubmit={HandleSubmit}>
-                    <label>
-                        Host Name:
-                        <input 
-                        type="text" 
-                        value={Name} 
-                        onChange={(event) => setName(event.target.value)} />
-                    </label>
-                    <br />
-                    <label>
-                        Host IP:
-                        <input 
-                        type="text" 
-                        value={Host}
-                        onChange={(event) => setHost(event.target.value)} />
-                    </label>
-                    <br />
-                    <label>
-                        SSH Username:
-                        <input 
-                        type="text" 
-                        value={Username} 
-                        onChange={(event) => setUsername(event.target.value)} />
-                    </label>
-                    <br />
-                    <label>
-                        SSH Password:
-                        <input 
-                        type="text" 
-                        value={Password} 
-                        onChange={(event) => setPassword(event.target.value)} />
-                    </label>
-                    <br />
-                    <label>
-                        SSH Port:
-                        <input 
-                        type="text" 
-                        value={Port} 
-                        onChange={NumberInput} />
-                        (DEFAULT, Do not change if you don't know what it is.)
-                    </label>
-                    <br />
-                    <button type = "submit">Save New Machine</button>
-                </form>
-            </div>
-          )}
-        </div>
+        <Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h5" component="h2">
+                    Add New Machine
+                </Typography>
+                <Button 
+                    variant="contained" 
+                    startIcon={<AddIcon />}
+                    onClick={() => setIsOpen(!isOpen)}
+                    color="primary"
+                >
+                    {isOpen ? 'Cancel' : 'Add Machine'}
+                </Button>
+            </Box>
+            
+            <Collapse in={isOpen}>
+                <Card sx={{ mb: 3 }}>
+                    <CardContent>
+                        <form onSubmit={HandleSubmit}>
+                            <Grid container spacing={3}>
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <ComputerIcon sx={{ mr: 1 }} />
+                                        Machine Details
+                                    </Typography>
+                                    <Divider sx={{ mb: 2 }} />
+                                </Grid>
+                                
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="Host Name"
+                                        variant="outlined"
+                                        value={Name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        required
+                                    />
+                                </Grid>
+                                
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="Host IP"
+                                        variant="outlined"
+                                        value={Host}
+                                        onChange={(e) => setHost(e.target.value)}
+                                        required
+                                    />
+                                </Grid>
+                                
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+                                        SSH Connection Details
+                                    </Typography>
+                                    <Divider sx={{ mb: 2 }} />
+                                </Grid>
+                                
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="SSH Username"
+                                        variant="outlined"
+                                        value={Username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        required
+                                    />
+                                </Grid>
+                                
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="SSH Password"
+                                        type={showPassword ? "text" : "password"}
+                                        variant="outlined"
+                                        value={Password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        InputProps={{
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        edge="end"
+                                                    >
+                                                        {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            )
+                                        }}
+                                    />
+                                </Grid>
+                                
+                                <Grid item xs={12} sm={6}>
+                                    <TextField
+                                        fullWidth
+                                        label="SSH Port"
+                                        variant="outlined"
+                                        value={Port}
+                                        onChange={NumberInput}
+                                        helperText="Default is 22. Only change if necessary."
+                                    />
+                                </Grid>
+                                
+                                <Grid item xs={12}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            type="submit"
+                                            startIcon={<SaveIcon />}
+                                            disabled={isSubmitting}
+                                        >
+                                            {isSubmitting ? 'Saving...' : 'Save Machine'}
+                                        </Button>
+                                    </Box>
+                                </Grid>
+                            </Grid>
+                        </form>
+                    </CardContent>
+                </Card>
+            </Collapse>
+            
+            {!isOpen && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                    Click the "Add Machine" button to monitor a new server.
+                </Alert>
+            )}
+        </Box>
     );
 }
 export default MachinesForm;

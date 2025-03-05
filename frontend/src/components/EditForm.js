@@ -1,10 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import {
+    Typography,
+    TextField,
+    Button,
+    Box,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Grid,
+    IconButton,
+    InputAdornment,
+    Divider
+} from '@mui/material';
+import SaveIcon from '@mui/icons-material/Save';
+import CloseIcon from '@mui/icons-material/Close';
+import ComputerIcon from '@mui/icons-material/Computer';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 function EditForm({ system, onClose, onUpdate }) {
     const [Host, setHost] = useState(system.host);
     const [Username, setUsername] = useState(system.username);
     const [Password, setPassword] = useState(system.password);
     const [Port, setPort] = useState(system.port || "22");
+    const [showPassword, setShowPassword] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     function NumberInput(e) {
         const value = e.target.value.replace(/\D/g, "");
@@ -12,6 +33,7 @@ function EditForm({ system, onClose, onUpdate }) {
     }
 
     function UpdateMachine() {
+        setIsSubmitting(true);
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
         fetch(`${apiUrl}/api/machine/${encodeURIComponent(system.name)}`, {
             method: 'PUT',
@@ -36,6 +58,9 @@ function EditForm({ system, onClose, onUpdate }) {
             .catch(error => {
                 console.error('Error:', error);
                 alert('Failed to update machine. Please check SSH credentials and try again.');
+            })
+            .finally(() => {
+                setIsSubmitting(false);
             });
     }
 
@@ -45,49 +70,107 @@ function EditForm({ system, onClose, onUpdate }) {
     }
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content FormCard">
-                <h2>Edit {system.name}</h2>
-                <form onSubmit={HandleSubmit}>
-                    <label>
-                        Host IP:
-                        <input
-                            type="text"
-                            value={Host}
-                            onChange={(event) => setHost(event.target.value)} />
-                    </label>
-                    <br />
-                    <label>
-                        SSH Username:
-                        <input
-                            type="text"
-                            value={Username}
-                            onChange={(event) => setUsername(event.target.value)} />
-                    </label>
-                    <br />
-                    <label>
-                        SSH Password:
-                        <input
-                            type="text"
-                            value={Password}
-                            onChange={(event) => setPassword(event.target.value)} />
-                    </label>
-                    <br />
-                    <label>
-                        SSH Port:
-                        <input
-                            type="text"
-                            value={Port}
-                            onChange={NumberInput} />
-                    </label>
-                    <br />
-                    <div className="button-group">
-                        <button type="submit">Save Changes</button>
-                        <button type="button" onClick={onClose}>Cancel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <Dialog 
+            open={true} 
+            onClose={onClose}
+            fullWidth
+            maxWidth="md"
+        >
+            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <ComputerIcon sx={{ mr: 1 }} />
+                    <Typography variant="h6">Edit {system.name}</Typography>
+                </Box>
+                <IconButton edge="end" color="inherit" onClick={onClose} aria-label="close">
+                    <CloseIcon />
+                </IconButton>
+            </DialogTitle>
+            <Divider />
+            <form onSubmit={HandleSubmit}>
+                <DialogContent>
+                    <Grid container spacing={3}>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="Host IP"
+                                variant="outlined"
+                                value={Host}
+                                onChange={(e) => setHost(e.target.value)}
+                                required
+                                margin="normal"
+                            />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="SSH Port"
+                                variant="outlined"
+                                value={Port}
+                                onChange={NumberInput}
+                                margin="normal"
+                                helperText="Default is 22"
+                            />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="SSH Username"
+                                variant="outlined"
+                                value={Username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                required
+                                margin="normal"
+                            />
+                        </Grid>
+                        
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                label="SSH Password"
+                                type={showPassword ? "text" : "password"}
+                                variant="outlined"
+                                value={Password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                margin="normal"
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                edge="end"
+                                            >
+                                                {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
+                            />
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions sx={{ p: 3, pt: 1 }}>
+                    <Button 
+                        onClick={onClose} 
+                        variant="outlined"
+                        color="inherit"
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        type="submit" 
+                        variant="contained" 
+                        color="primary"
+                        startIcon={<SaveIcon />}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </DialogActions>
+            </form>
+        </Dialog>
     );
 }
 

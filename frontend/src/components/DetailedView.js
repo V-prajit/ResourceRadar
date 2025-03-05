@@ -1,12 +1,38 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useContext } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Dropdown from './DropDown';
 import CpuSystemGraph from './CPUGraph';
 import MemUsageGraph from './MEMGraph';
 import { io } from 'socket.io-client';
+import { ColorModeContext } from '../App';
+import { 
+    Container, 
+    Typography, 
+    Paper, 
+    Box, 
+    Grid, 
+    Button, 
+    AppBar, 
+    Toolbar, 
+    IconButton,
+    Chip,
+    CircularProgress,
+    useMediaQuery,
+    useTheme
+} from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import ComputerIcon from '@mui/icons-material/Computer';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 
 function SystemDetails(){
     const { name } = useParams();
+    const navigate = useNavigate();
+    const colorMode = useContext(ColorModeContext);
+    const theme = useTheme();
+    const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+    
     const [timeFrame, setTimeFrame] = useState('1h');
     const [graphData, setGraphData] = useState(null);
     const [systemInfo, setSystemInfo] = useState(null);
@@ -115,18 +141,106 @@ function SystemDetails(){
     }, [timeFrame, socket]);
 
     if (!systemInfo) {
-        return <div>Loading...</div>;
+        return (
+            <>
+                <AppBar position="static">
+                    <Toolbar>
+                        <IconButton 
+                            edge="start" 
+                            color="inherit" 
+                            onClick={() => navigate('/')} 
+                            sx={{ mr: 2 }}
+                        >
+                            <ArrowBackIcon />
+                        </IconButton>
+                        <DashboardIcon sx={{ mr: 2 }} />
+                        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                            Resource Radar
+                        </Typography>
+                        <IconButton 
+                            sx={{ ml: 1 }} 
+                            onClick={colorMode.toggleColorMode} 
+                            color="inherit"
+                        >
+                            {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+                        </IconButton>
+                    </Toolbar>
+                </AppBar>
+                <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+                    <CircularProgress />
+                    <Typography variant="h6" sx={{ ml: 2 }}>Loading system data...</Typography>
+                </Container>
+            </>
+        );
     }
 
     return(
-        <div>
-            <h1>System Details</h1>
-            <p>Host Name: {name}</p>
-            <p>Host IP: {systemInfo.host}</p>
-            <Dropdown timeFrame={timeFrame} onTimeFrameChange={handleTimeFrameChange} />
-            <CpuSystemGraph timeFrame={timeFrame} graphData={graphData || []} />
-            <MemUsageGraph timeFrame={timeFrame} graphData={graphData || []} />
-        </div>
+        <>
+            <AppBar position="static">
+                <Toolbar>
+                    <IconButton 
+                        edge="start" 
+                        color="inherit" 
+                        onClick={() => navigate('/')} 
+                        sx={{ mr: 2 }}
+                        aria-label="back to dashboard"
+                    >
+                        <ArrowBackIcon />
+                    </IconButton>
+                    <DashboardIcon sx={{ mr: 2 }} />
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                        Resource Radar
+                    </Typography>
+                    <IconButton 
+                        sx={{ ml: 1 }} 
+                        onClick={colorMode.toggleColorMode} 
+                        color="inherit"
+                    >
+                        {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+                    </IconButton>
+                </Toolbar>
+            </AppBar>
+            
+            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <ComputerIcon sx={{ mr: 1, fontSize: 30 }} />
+                        <Typography variant="h4" component="h1">
+                            {name}
+                        </Typography>
+                    </Box>
+                    
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="body1" color="text.secondary">
+                            Host IP: {systemInfo.host}
+                        </Typography>
+                        
+                        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+                            <Chip 
+                                label={`Status: ${systemInfo.status}`} 
+                                color={systemInfo.status === 'offline' ? 'error' : 'success'} 
+                                size="small"
+                                sx={{ mr: 2 }}
+                            />
+                            <Dropdown timeFrame={timeFrame} onTimeFrameChange={handleTimeFrameChange} />
+                        </Box>
+                    </Box>
+                    
+                    <Grid container spacing={3}>
+                        <Grid item xs={12} md={isDesktop ? 6 : 12}>
+                            <Paper elevation={2} sx={{ p: 2, bgcolor: 'background.paper' }}>
+                                <CpuSystemGraph timeFrame={timeFrame} graphData={graphData || []} />
+                            </Paper>
+                        </Grid>
+                        <Grid item xs={12} md={isDesktop ? 6 : 12}>
+                            <Paper elevation={2} sx={{ p: 2, bgcolor: 'background.paper' }}>
+                                <MemUsageGraph timeFrame={timeFrame} graphData={graphData || []} />
+                            </Paper>
+                        </Grid>
+                    </Grid>
+                </Paper>
+            </Container>
+        </>
     );
 };
 

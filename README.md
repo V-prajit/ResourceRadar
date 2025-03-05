@@ -1,21 +1,33 @@
-# Server Status Monitor
+# ResourceRadar
 
-A real-time server monitoring application that allows you to track CPU and memory usage across multiple remote servers through a clean web interface.
+A real-time server monitoring dashboard that provides comprehensive visualization of CPU and memory usage across multiple remote servers through an elegant and intuitive interface.
+
+![Dashboard Screenshot](docs/dashboard_screenshot.png)
+*Screenshot: ResourceRadar Dashboard with multiple servers being monitored*
+
+![Detailed Metrics](docs/detailed_metrics.png)
+*Screenshot: Detailed performance metrics with time-series graphs*
 
 ## Features
 
-- **Real-time Monitoring**: Track CPU and memory usage on remote servers
-- **Historical Data**: View historical performance through interactive charts
-- **Server Management**: Add, monitor, and remove servers easily
-- **SSH Authentication**: Secure connection to remote servers
+- **Real-time Monitoring**: Track CPU and memory usage on remote servers with automatic updates
+- **Historical Data**: View historical performance through interactive time-series charts
+- **Material UI Design**: Modern, responsive interface with dark/light mode support
+- **Server Management**: Add, edit, and remove servers through an intuitive interface
+- **SSH Authentication**: Secure connection to remote servers using standard SSH credentials
+- **Multi-server Dashboard**: Monitor unlimited servers in a single dashboard view
 - **Containerized Deployment**: Easy setup with Docker Compose
+- **Time Range Selection**: View metrics over customizable time periods (1 minute to 30 days)
+- **System Status Indicators**: Visual status indications for online/offline systems
+- **Kafka Integration**: High-throughput message processing for metric collection
 
 ## Architecture
 
-The application consists of these key components:
+ResourceRadar utilizes a modern, scalable architecture:
 
-- **React Frontend**: Web interface for visualizing server data
+- **React Frontend**: Material UI-based web interface for visualizing server data
 - **Node.js Backend**: Express API server that connects to remote servers via SSH
+- **Kafka**: Message broker for reliable, high-throughput metric processing
 - **PostgreSQL**: Stores server connection information
 - **InfluxDB**: Time-series database for storing performance metrics
 - **Docker**: Container orchestration for easy deployment
@@ -30,33 +42,48 @@ The application consists of these key components:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/username/server_status.git
-   cd server_status
+   git clone https://github.com/yourusername/ResourceRadar.git
+   cd ResourceRadar
    ```
 
-2. Configure environment variables (or use defaults in docker-compose.yml):
-   ```bash
-   # Optional: Modify docker-compose.yml to update any credentials
-   ```
-
-3. Start the application:
+2. Start the application:
    ```bash
    docker-compose up -d
    ```
 
-4. Access the web interface:
-   - Open your browser and go to `http://localhost:80`
+3. Access the web interface:
+   - Open your browser and go to `http://localhost`
+   - Note: Initial startup may take a minute while services initialize
 
-## Adding a New Server
+## Adding Servers to Monitor
 
-1. Navigate to "Add New Server" in the web interface
+1. Once the dashboard loads, click the "Add Machine" button
 2. Enter server details:
-   - Name: A friendly name for the server
-   - Host: IP address or hostname
-   - Username: SSH username
-   - Password: SSH password
-   - Port: SSH port (default: 22)
-3. Click "Add Server" - the system will verify connectivity and begin monitoring
+   - Host Name: A recognizable name for the server
+   - Host IP: IP address or hostname
+   - SSH Username: SSH username
+   - SSH Password: SSH password
+   - SSH Port: SSH port (default: 22)
+3. Click "Save Machine" - the system will verify connectivity and begin monitoring
+
+## Testing with Demo Servers
+
+ResourceRadar includes a testing environment that creates multiple demo servers for demonstration:
+
+1. Start ResourceRadar using the steps above
+2. Set up the test environment:
+   ```bash
+   cd testing
+   ./run-test-environment.sh
+   ```
+3. Generate interesting metrics patterns:
+   ```bash
+   ./stress-test-systems.sh
+   ```
+4. When finished, clean up the test environment:
+   ```bash
+   ./cleanup-test-environment.sh
+   ```
 
 ## Development Setup
 
@@ -76,80 +103,4 @@ npm install
 npm start
 ```
 
-### Database Setup (Manual)
-
-If you need to manually set up the database:
-
-1. PostgreSQL:
-```sql
-CREATE TABLE IF NOT EXISTS machines (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    host VARCHAR(255) NOT NULL,
-    username VARCHAR(255) NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    port INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-2. InfluxDB:
-   - Create a bucket named "Server_Stats"
-   - Generate an admin token
-
-## Environment Variables
-
-### Backend
-```
-INFLUX_TOKEN=your_influxdb_token
-INFLUX_ORG=server_stat
-INFLUX_BUCKET=Server_Stats
-PGUSER=postgres
-PGHOST=postgres
-PGDATABASE=sshinfo
-PGPASSWORD=your_postgres_password
-PGPORT=5432
-```
-
-### Frontend
-```
-REACT_APP_API_URL=http://localhost:3001
-```
-
-## Docker Configuration
-
-The application is containerized using Docker with the following services:
-
-- **influxdb**: Time-series database for metrics storage
-- **postgres**: Relational database for server credentials
-- **backend**: Node.js API server
-- **frontend**: React application served via Nginx
-
-### Customizing Docker Setup
-
-To modify ports or configurations:
-
-1. Edit the `docker-compose.yml` file
-2. Update the corresponding environment variables
-3. Rebuild the containers: `docker-compose up -d --build`
-
-## Security Considerations
-
-- SSH credentials are stored in PostgreSQL - ensure database security
-- Use environment variables instead of hardcoding secrets
-- Consider using SSH keys instead of passwords for production environments
-- Restrict access to the monitoring application
-
-## Troubleshooting
-
-- **Connection Issues**: Check SSH credentials and network connectivity
-- **Missing Data**: Verify InfluxDB connection and token validity
-- **Container Errors**: Check logs with `docker-compose logs [service_name]`
-
-## License
-
-MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+*Made with ❤️ by [Prajit Viswanadha]*

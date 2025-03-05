@@ -1,0 +1,196 @@
+version: '3'
+
+services:
+  test-system-1:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: resourceradar-test-1
+    hostname: web-prod-01
+    ports:
+      - "2201:22"
+    environment:
+      - SYSTEM_NAME=test-system-1
+    restart: unless-stopped
+    networks:
+      - resourceradar-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 150M
+
+  test-system-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resourceradar-test-2
+    hostname: postgres-main
+    ports:
+      - "2202:22"
+    environment:
+      - SYSTEM_NAME=test-system-2
+    restart: unless-stopped
+    networks:
+      - resourceradar-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 200M
+
+  test-system-3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resourceradar-test-3
+    hostname: redis-cache-01
+    ports:
+      - "2203:22"
+    environment:
+      - SYSTEM_NAME=test-system-3
+    restart: unless-stopped
+    networks:
+      - resourceradar-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.4'
+          memory: 120M
+
+  test-system-4:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resourceradar-test-4
+    hostname: api-backend-prod
+    ports:
+      - "2204:22"
+    environment:
+      - SYSTEM_NAME=test-system-4
+    restart: unless-stopped
+    networks:
+      - resourceradar-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 180M
+
+  test-system-5:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resourceradar-test-5
+    hostname: worker-payments
+    ports:
+      - "2205:22"
+    environment:
+      - SYSTEM_NAME=test-system-5
+    restart: unless-stopped
+    networks:
+      - resourceradar-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 100M
+
+  test-system-6:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resourceradar-test-6
+    hostname: memcached-session
+    ports:
+      - "2206:22"
+    environment:
+      - SYSTEM_NAME=test-system-6
+    restart: unless-stopped
+    networks:
+      - resourceradar-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.15'
+          memory: 120M
+
+  test-system-7:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resourceradar-test-7
+    hostname: search-elastic
+    ports:
+      - "2207:22"
+    environment:
+      - SYSTEM_NAME=test-system-7
+    restart: unless-stopped
+    networks:
+      - resourceradar-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 80M
+
+  test-system-8:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resourceradar-test-8
+    hostname: frontend-nginx
+    ports:
+      - "2208:22"
+    environment:
+      - SYSTEM_NAME=test-system-8
+    restart: unless-stopped
+    networks:
+      - resourceradar-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.35'
+          memory: 160M
+
+  test-system-9:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resourceradar-test-9
+    hostname: kafka-broker-1
+    ports:
+      - "2209:22"
+    environment:
+      - SYSTEM_NAME=test-system-9
+    restart: unless-stopped
+    networks:
+      - resourceradar-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 140M
+
+  test-system-10:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: resourceradar-test-10
+    hostname: data-warehouse
+    ports:
+      - "2210:22"
+    environment:
+      - SYSTEM_NAME=test-system-10
+    restart: unless-stopped
+    networks:
+      - resourceradar-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.45'
+          memory: 250M
+
+networks:
+  resourceradar-network:
+    external: true

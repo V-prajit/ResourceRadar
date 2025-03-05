@@ -1,9 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEdit, faTrashAlt } from '@fortawesome/free-solid-svg-icons';
 import EditForm from './EditForm';
 import { io } from 'socket.io-client';
+import { 
+    Typography, 
+    Grid, 
+    Card, 
+    CardContent, 
+    CardActions, 
+    Button, 
+    Chip,
+    LinearProgress,
+    Box
+} from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ComputerIcon from '@mui/icons-material/Computer';
+import MemoryIcon from '@mui/icons-material/Memory';
 
 function SystemDashboard() {
     const [systems, setSystems] = useState([]);
@@ -27,14 +40,18 @@ function SystemDashboard() {
     }, []);
 
     return (
-        <div>
-            <h1>System Dashboard</h1>
-            <div className="system-cards">
+        <Box sx={{ width: '100%' }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+                System Dashboard
+            </Typography>
+            <Grid container spacing={3}>
                 {systems.map((system, index) => (
-                    <SystemCard key={index} system={system} onUpdate={() => setSystems([])} />
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                        <SystemCard system={system} onUpdate={() => setSystems([])} />
+                    </Grid>
                 ))}
-            </div>
-        </div>
+            </Grid>
+        </Box>
     );
 }
 
@@ -43,7 +60,7 @@ function SystemCard({system, onUpdate}) {
     const [systemInfo, setSystemInfo] = useState(null);
 
     const navigate = useNavigate();
-    const handleCardClick = (e) => {
+    const handleCardClick = () => {
         navigate(`/details/${system.name}`);
     };
 
@@ -88,32 +105,105 @@ function SystemCard({system, onUpdate}) {
     };
 
     const isOffline = system.status === 'offline';
+    
+    // Calculate CPU usage for progress bar
+    const cpuUsage = parseInt(system.cpuUsage) || 0;
+    const memUsage = parseInt(system.memUsage) || 0;
+    
+    // Determine status color
+    const statusColor = isOffline ? 'error' : 'success';
 
     return (
         <>
-            <div className={`card ${isOffline ? 'offline' : ''}`} onClick={handleCardClick}>
-                <h3>Host Name: {system.name}</h3>
-                <p>Host IP: {system.host}</p>
-                <p>Status: <span className={isOffline ? 'status-offline' : 'status-online'}>
-                    {system.status}
-                </span></p>
-                {!isOffline && system.initialCollection ? (
-                    <p>Collecting metrics - please wait...</p>
-                ) : !isOffline && (
-                    <>
-                        <p>CPU Usage: {system.cpuUsage}%</p>
-                        <p>MEM Usage: {system.memUsage}MB</p>
-                    </>
-                )}
-                <div style={{ textAlign: 'right' }}>
-                    <button onClick={handleEdit}>
-                        <FontAwesomeIcon icon={faEdit} /> Edit
-                    </button>
-                    <button onClick={handleDelete}>
-                        <FontAwesomeIcon icon={faTrashAlt} /> Delete
-                    </button>
-                </div>
-            </div>
+            <Card 
+                sx={(theme) => ({ 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    bgcolor: theme.palette.mode === 'dark' 
+                        ? (isOffline ? 'rgba(244, 67, 54, 0.15)' : theme.palette.background.paper) 
+                        : (isOffline ? '#fef7f7' : 'white'),
+                    color: theme.palette.text.primary,
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                        transform: 'scale(1.02)',
+                        boxShadow: 3
+                    }
+                })}
+                onClick={handleCardClick}
+            >
+                <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <ComputerIcon sx={{ mr: 1 }} />
+                        <Typography variant="h6" component="h2" gutterBottom>
+                            {system.name}
+                        </Typography>
+                    </Box>
+                    
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Host IP: {system.host}
+                    </Typography>
+                    
+                    <Box sx={{ mt: 2, mb: 2 }}>
+                        <Chip 
+                            label={`Status: ${system.status}`} 
+                            color={statusColor} 
+                            size="small"
+                            sx={{ fontWeight: 'medium' }}
+                        />
+                    </Box>
+                    
+                    {!isOffline && system.initialCollection ? (
+                        <Typography variant="body2">Collecting metrics - please wait...</Typography>
+                    ) : !isOffline && (
+                        <>
+                            <Box sx={{ mt: 3 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <MemoryIcon fontSize="small" sx={{ mr: 1 }} />
+                                    <Typography variant="body2">CPU Usage: {cpuUsage}%</Typography>
+                                </Box>
+                                <LinearProgress 
+                                    variant="determinate" 
+                                    value={cpuUsage} 
+                                    color={cpuUsage > 80 ? 'error' : cpuUsage > 50 ? 'warning' : 'primary'}
+                                    sx={{ height: 8, borderRadius: 5, mb: 2 }}
+                                />
+                                
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                    <MemoryIcon fontSize="small" sx={{ mr: 1 }} />
+                                    <Typography variant="body2">Memory Usage: {memUsage} MB</Typography>
+                                </Box>
+                                <LinearProgress 
+                                    variant="determinate" 
+                                    value={Math.min(memUsage / 10, 100)} 
+                                    color={memUsage > 8000 ? 'error' : memUsage > 4000 ? 'warning' : 'primary'}
+                                    sx={{ height: 8, borderRadius: 5 }}
+                                />
+                            </Box>
+                        </>
+                    )}
+                </CardContent>
+                
+                <CardActions sx={{ justifyContent: 'flex-end', p: 2, pt: 0 }}>
+                    <Button 
+                        size="small" 
+                        startIcon={<EditIcon />} 
+                        onClick={handleEdit}
+                        color="primary"
+                    >
+                        Edit
+                    </Button>
+                    <Button 
+                        size="small" 
+                        startIcon={<DeleteIcon />} 
+                        onClick={handleDelete}
+                        color="error"
+                    >
+                        Delete
+                    </Button>
+                </CardActions>
+            </Card>
             
             {showEditForm && systemInfo && (
                 <EditForm 

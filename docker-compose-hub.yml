@@ -1,72 +1,96 @@
 version: '3'
 services:
-     influxdb:
-       image: influxdb:latest
-       environment:
-         - DOCKER_INFLUXDB_INIT_MODE=setup
-         - DOCKER_INFLUXDB_INIT_USERNAME=your_username
-         - DOCKER_INFLUXDB_INIT_PASSWORD=your_password
-         - DOCKER_INFLUXDB_INIT_ORG=server_stat
-         - DOCKER_INFLUXDB_INIT_BUCKET=Server_Stats
-         - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
-       volumes:
-         - influxdb-data:/var/lib/influxdb2
+  influxdb:
+    image: influxdb:latest
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=your_username
+      - DOCKER_INFLUXDB_INIT_PASSWORD=your_password
+      - DOCKER_INFLUXDB_INIT_ORG=server_stat
+      - DOCKER_INFLUXDB_INIT_BUCKET=Server_Stats
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    networks:
+      - resourceradar-network
 
-     postgres:
-       image: postgres:latest
-       environment:
-         - POSTGRES_USER=postgres
-         - POSTGRES_PASSWORD=POSTGRESSECURE
-         - POSTGRES_DB=sshinfo
-       volumes:
-         - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=POSTGRESSECURE
+      - POSTGRES_DB=sshinfo
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - resourceradar-network
 
-     zookeeper:
-       image: confluentinc/cp-zookeeper:latest
-       environment:
-         ZOOKEEPER_CLIENT_PORT: 2181
-         ZOOKEEPER_TICK_TIME: 2000
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - resourceradar-network
 
-     kafka:
-       image: confluentinc/cp-kafka:latest
-       depends_on:
-         - zookeeper
-       environment:
-         KAFKA_BROKER_ID: 1
-         KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-         KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-         KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-         KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-         KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - resourceradar-network
 
-     backend:
-       image: prajitviswanadha/resourceradar-backend:latest
-       ports:
-         - "3001:3001"
-       environment:
-         - INFLUX_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
-         - INFLUX_ORG=server_stat
-         - INFLUX_BUCKET=Server_Stats
-         - PGUSER=postgres
-         - PGHOST=postgres
-         - PGDATABASE=sshinfo
-         - PGPASSWORD=POSTGRESSECURE
-         - PGPORT=5432
-       extra_hosts:
-         - "host.docker.internal:host-gateway"
-       depends_on:
-         - influxdb
-         - postgres
-         - kafka
+  backend:
+    image: prajitviswanadha/resourceradar-backend:latest
+    ports:
+      - "3001:3001"
+    environment:
+      - INFLUX_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
+      - INFLUX_ORG=server_stat
+      - INFLUX_BUCKET=Server_Stats
+      - PGUSER=postgres
+      - PGHOST=postgres
+      - PGDATABASE=sshinfo
+      - PGPASSWORD=POSTGRESSECURE
+      - PGPORT=5432
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - influxdb
+      - postgres
+      - kafka
+    networks:
+      - resourceradar-network
 
-     frontend:
-       image: prajitviswanadha/resourceradar-frontend:latest
-       ports:
-         - "80:80"
-       depends_on:
-         - backend
-       environment:
-         - REACT_APP_API_URL=http://backend:3001
+  frontend:
+    image: prajitviswanadha/resourceradar-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://backend:3001
+    networks:
+      - resourceradar-network
 
-   volumes:
-     influxdb-data:
+networks:
+  resourceradar-network:
+    driver: bridge
+
+volumes:
+  influxdb-data:

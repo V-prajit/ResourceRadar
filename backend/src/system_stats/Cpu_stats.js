@@ -1,10 +1,8 @@
 require('dotenv').config();
-const { Point } = require('@influxdata/influxdb-client')
+const { sendMetric } = require('../kafka/producer');
 
-const fetchCpuUsage = (sshClient, system, writeApi) => {
+const fetchCpuUsage = (sshClient, system) => {
     return new Promise((resolve, reject) => {
-        // Use a continuous top command with a 0.5 second delay
-        // This provides more consistent monitoring without starting/stopping processes
         sshClient.exec("top -b -d 0.5 -n 3 | grep '%Cpu'", (err, stream) => {
             if (err) {
                 console.error(`SSH Command Execution Error for ${system.name}:`, err);
@@ -26,7 +24,6 @@ const fetchCpuUsage = (sshClient, system, writeApi) => {
                 if (lines.length >= 2) {
                     const lastLine = lines[lines.length - 1];
                     
-                    // Extract CPU usage - top shows either "us" (user) + "sy" (system) or just "%Cpu(s):"
                     let cpuUsage = 0;
                     if (lastLine.includes('us') && lastLine.includes('sy')) {
                         // Format: "%Cpu(s):  5.9 us,  2.4 sy, ..."
@@ -48,22 +45,22 @@ const fetchCpuUsage = (sshClient, system, writeApi) => {
                     
                     console.log(`Processed CPU usage for ${system.name}: ${cpuUsage}`);
                     
-                    const point = new Point('cpu_usage')
-                        .tag('name', system.name)
-                        .floatField('usage', cpuUsage);
-
-                    writeApi.writePoint(point);
+                    sendMetric('cpu-metrics', {
+                        name: system.name,
+                        value: cpuUsage,
+                        timestamp: new Date().toISOString()
+                    });
                 }
             });
 
             stream.on('close', () => {
                 if (!dataReceived) {
                     console.error(`No CPU data received for ${system.name}`);
-                    // Write a 0 value so we know we tried
-                    const point = new Point('cpu_usage')
-                        .tag('name', system.name)
-                        .floatField('usage', 0);
-                    writeApi.writePoint(point);
+                    sendMetric('cpu-metrics', {
+                        name: system.name,
+                        value: 0,
+                        timestamp: new Date().toISOString()
+                    });
                 }
                 resolve();
             });

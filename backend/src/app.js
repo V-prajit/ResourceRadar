@@ -19,11 +19,16 @@ app.use(bodyParser.json());
 const SendGraphData = require('./API/graph_query.js')
 const { InfluxDB } = require('@influxdata/influxdb-client');
 const {monitorAllSystems, SendResources, deleteInfluxData} = require('./SSH_Client.js')
+const { startConsumer } = require('./kafka/consumer');
 
 // Set up Socket.IO
 const io = new Server(server, {
   cors: corsOptions
 });
+
+startConsumer()
+    .then(() => console.log('Kafka consumer started'))
+    .catch(err => console.error ('Failed to Start kafka consumer: ', err));
 
 app.get('/', (req, res) => {
     db_model.getMachines()

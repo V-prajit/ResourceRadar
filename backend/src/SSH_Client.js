@@ -49,13 +49,11 @@ const createsshClient = async (system, retries = 0) => {
         try {
             console.log(`SSH connected to ${system.name} (${system.host}:${system.port || 22}), fetching metrics...`);
             await Promise.all([
-                fetchCpuUsage(sshClient, system, writeApi),
-                fetchMemoryUsage(sshClient, system, writeApi)
+                fetchCpuUsage(sshClient, system),
+                fetchMemoryUsage(sshClient, system)
             ]);
             console.log(`Successfully collected metrics for ${system.name}`);
-            writeApi.flush().then(() => {
-                console.log(`Metrics for ${system.name} flushed to InfluxDB`);
-            });
+            // Data is now sent through Kafka, no need to flush directly
             sshClient.end();
             resolve();// Close the SSH connection
         } catch (error) {

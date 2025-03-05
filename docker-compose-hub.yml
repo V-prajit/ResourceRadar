@@ -31,6 +31,8 @@ services:
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
+    ports:
+      - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -75,6 +77,8 @@ services:
 
   frontend:
     image: prajitviswanadha/resourceradar-frontend:latest
+    ports:
+      - "3000:80"  # Expose the frontend port locally for nginx to access
     depends_on:
       - backend
     environment:

@@ -58,7 +58,7 @@ services:
   backend:
     image: prajitviswanadha/resourceradar-backend:latest
     ports:
-      - "3001:3001"
+      - "0.0.0.0:3001:3001"
     environment:
       - INFLUX_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
       - INFLUX_ORG=server_stat
@@ -80,7 +80,7 @@ services:
   frontend:
     image: prajitviswanadha/resourceradar-frontend:latest
     ports:
-      - "80:80"
+      - "0.0.0.0:80:80"
     depends_on:
       - backend
     environment:

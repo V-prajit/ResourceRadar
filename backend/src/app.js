@@ -7,7 +7,7 @@ const { Server } = require('socket.io');
 const express_port = 3001;
 const cors = require('cors');
 const corsOptions = {
-    origin: ['http://localhost', 'http://localhost:80', 'http://localhost:3000', 'http://frontend'],
+    origin: ['http://localhost', 'http://localhost:80', 'http://localhost:3000', 'http://frontend', '*'],
     credentials: true
 };
 app.use(cors(corsOptions));

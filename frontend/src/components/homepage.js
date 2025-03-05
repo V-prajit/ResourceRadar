@@ -30,9 +30,11 @@ function HomePage(){
     // Fetch systems to check if any exist
     useEffect(() => {
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        console.log("Connecting to API at:", apiUrl);
         fetch(`${apiUrl}/`)
             .then(response => response.json())
             .then(data => {
+                console.log("Systems data loaded:", data);
                 setSystems(data);
             })
             .catch(error => console.error('Error fetching systems:', error));

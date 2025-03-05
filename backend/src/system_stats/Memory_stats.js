@@ -1,9 +1,8 @@
 require('dotenv').config();
-const { Point } = require('@influxdata/influxdb-client')
+const { sendMetric } = require('../kafka/producer');
 
 const fetchMemoryUsage = (sshClient, system, writeApi) => {
     return new Promise((resolve, reject) => {
-        // Try a more generic command that should work on most Linux systems
         sshClient.exec("free -m | grep Mem | awk '{print $3}'", (err, stream) => {
             if (err) {
                 console.error(`SSH Command Execution Error for ${system.name} memory:`, err);
@@ -26,22 +25,22 @@ const fetchMemoryUsage = (sshClient, system, writeApi) => {
                 
                 console.log(`Processed memory usage for ${system.name}: ${memoryUsage}MB`);
                 
-                const point = new Point('memory_usage')
-                    .tag('name', system.name)
-                    .floatField('usage', memoryUsage);
-
-                writeApi.writePoint(point);
+                sendMetric('memory-metrics', {
+                    name: system.name,
+                    value: memoryUsage,
+                    timestamp: new Date().toISOString()
+                });
                 resolve();
             });
             
             stream.on('close', () => {
                 if (!dataReceived) {
                     console.error(`No memory data received for ${system.name}`);
-                    // Write a 0 value so we know we tried
-                    const point = new Point('memory_usage')
-                        .tag('name', system.name)
-                        .floatField('usage', 0);
-                    writeApi.writePoint(point);
+                    sendMetric('memory-metrics', {
+                        name: system.name,
+                        value: 0,
+                        timestamp: new Date().toISOString()
+                    });
                     resolve();
                 }
             });

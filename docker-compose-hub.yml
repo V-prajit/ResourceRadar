@@ -2,6 +2,8 @@ version: '3'
 services:
   influxdb:
     image: influxdb:latest
+    ports:
+      - "8086:8086"
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=your_username
@@ -16,6 +18,8 @@ services:
 
   postgres:
     image: postgres:latest
+    ports:
+      - "5432:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=POSTGRESSECURE
@@ -37,12 +41,14 @@ services:
     image: confluentinc/cp-kafka:latest
     depends_on:
       - zookeeper
+    ports:
+      - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     networks:
@@ -55,16 +61,17 @@ services:
       - INFLUX_ORG=server_stat
       - INFLUX_BUCKET=Server_Stats
       - PGUSER=postgres
-      - PGHOST=postgres
+      - PGHOST=localhost
       - PGDATABASE=sshinfo
       - PGPASSWORD=POSTGRESSECURE
       - PGPORT=5432
+      - INFLUXDB_URL=http://localhost:8086/
+      - KAFKA_BROKERS=localhost:29092
+    network_mode: "host"  # Use host network to access all networks the host can access
     depends_on:
       - influxdb
       - postgres
       - kafka
-    networks:
-      - resourceradar-network
 
   frontend:
     image: prajitviswanadha/resourceradar-frontend:latest

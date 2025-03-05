@@ -1,8 +1,11 @@
 const { Kafka } = require('kafkajs');
 
+// Use environment variable for Kafka brokers or default to localhost
+const brokers = process.env.KAFKA_BROKERS ? [process.env.KAFKA_BROKERS] : ['localhost:29092'];
+
 const kafka = new Kafka({
     clientId: 'resource-radar-producer',
-    brokers: ['kafka:29092']
+    brokers: brokers
 })
 
 const producer = kafka.producer();

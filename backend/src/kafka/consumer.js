@@ -11,9 +11,12 @@ const client = new InfluxDB({ url: influxUrl, token:
 const writeApi = client.getWriteApi(org, bucket,
 'ns', { flushInterval: 1000 });
 
+// Use environment variable for Kafka brokers or default to localhost
+const brokers = process.env.KAFKA_BROKERS ? [process.env.KAFKA_BROKERS] : ['localhost:29092'];
+
 const kafka = new Kafka({
-    clientId: 'resource-radar-producer',
-    brokers: ['kafka:29092'] 
+    clientId: 'resource-radar-consumer',
+    brokers: brokers
 });
 
 const consumer = kafka.consumer({ groupId: 'metrics-consumer'});

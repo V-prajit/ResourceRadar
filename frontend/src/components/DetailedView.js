@@ -69,7 +69,10 @@ function SystemDetails(){
     };
 
     useEffect(() => {
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        const port = window.location.port ? `:${window.location.port}` : '';
+        const apiUrl = `${protocol}//${hostname}${port}/api`;
         
         // Create socket connection
         const newSocket = io(apiUrl);
@@ -96,7 +99,7 @@ function SystemDetails(){
         });
         
         // Fetch system info initially (for IP address and other details)
-        fetch(`${apiUrl}/api/machine/${encodeURIComponent(name)}`)
+        fetch(`${apiUrl}/machine/${encodeURIComponent(name)}`)
             .then(response => response.json())
             .then(data => setSystemInfo(data))
             .catch(error => console.error('Error fetching system info:', error));

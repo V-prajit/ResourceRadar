@@ -31,7 +31,11 @@ function MachinesForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     function GetMachine(){
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        const port = window.location.port ? `:${window.location.port}` : '';
+        const apiUrl = `${protocol}//${hostname}${port}/api`;
+        
         fetch(`${apiUrl}/`)
             .then(response => {
                 return response.text();
@@ -48,7 +52,11 @@ function MachinesForm() {
 
     function CreateMachine(){
       setIsSubmitting(true);
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+      const hostname = window.location.hostname;
+      const protocol = window.location.protocol;
+      const port = window.location.port ? `:${window.location.port}` : '';
+      const apiUrl = `${protocol}//${hostname}${port}/api`;
+      
       fetch(`${apiUrl}/sshverify`, {
         method: 'POST',
         headers: {

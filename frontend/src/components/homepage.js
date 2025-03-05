@@ -29,12 +29,12 @@ function HomePage(){
     
     // Fetch systems to check if any exist
     useEffect(() => {
-        // Dynamically determine API URL - try environment variable first, then fall back to window.location
-        let apiUrl = process.env.REACT_APP_API_URL;
-        if (!apiUrl) {
-            const hostname = window.location.hostname;
-            apiUrl = `http://${hostname}:3001`;
-        }
+        // With the nginx proxy setup, we now access the backend through /api
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        const port = window.location.port ? `:${window.location.port}` : '';
+        const apiUrl = `${protocol}//${hostname}${port}/api`;
+        
         console.log("Connecting to API at:", apiUrl);
         fetch(`${apiUrl}/`)
             .then(response => response.json())

@@ -34,8 +34,12 @@ function EditForm({ system, onClose, onUpdate }) {
 
     function UpdateMachine() {
         setIsSubmitting(true);
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-        fetch(`${apiUrl}/api/machine/${encodeURIComponent(system.name)}`, {
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        const port = window.location.port ? `:${window.location.port}` : '';
+        const apiUrl = `${protocol}//${hostname}${port}/api`;
+        
+        fetch(`${apiUrl}/machine/${encodeURIComponent(system.name)}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

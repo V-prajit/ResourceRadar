@@ -23,9 +23,14 @@ function SystemDashboard() {
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-        // Create socket connection
-        const newSocket = io(apiUrl);
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        const port = window.location.port ? `:${window.location.port}` : '';
+        const apiUrl = `${protocol}//${hostname}${port}`;
+        
+        // Create socket connection, pointing to /api for the socket.io connection
+        const socketUrl = `${apiUrl}/api`;
+        const newSocket = io(socketUrl);
         setSocket(newSocket);
 
         // Listen for resource data updates
@@ -67,7 +72,11 @@ function SystemCard({system, onUpdate}) {
     const handleEdit = (e) => {
         e.stopPropagation(); 
         
-        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        const port = window.location.port ? `:${window.location.port}` : '';
+        const apiUrl = `${protocol}//${hostname}${port}/api`;
+        
         fetch(`${apiUrl}/`)
         .then(response => response.json())
         .then(data => {
@@ -86,8 +95,12 @@ function SystemCard({system, onUpdate}) {
         e.stopPropagation(); 
         const confirmDelete = window.confirm(`Are you sure you want to delete the system with the host IP: ${system.name}?`);
         if (confirmDelete) {
-            const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-            fetch(`${apiUrl}/api/machine/${encodeURIComponent(system.name)}`, {
+            const hostname = window.location.hostname;
+            const protocol = window.location.protocol;
+            const port = window.location.port ? `:${window.location.port}` : '';
+            const apiUrl = `${protocol}//${hostname}${port}/api`;
+            
+            fetch(`${apiUrl}/machine/${encodeURIComponent(system.name)}`, {
                 method: 'DELETE',
             })
             .then(response => {

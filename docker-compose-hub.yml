@@ -9,8 +9,6 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=server_stat
       - DOCKER_INFLUXDB_INIT_BUCKET=Server_Stats
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
-    ports:
-      - "8086:8086"
     volumes:
       - influxdb-data:/var/lib/influxdb2
     networks:
@@ -22,8 +20,6 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=POSTGRESSECURE
       - POSTGRES_DB=sshinfo
-    ports:
-      - "5432:5432"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
@@ -34,8 +30,6 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
     networks:
       - resourceradar-network
 
@@ -43,14 +37,12 @@ services:
     image: confluentinc/cp-kafka:latest
     depends_on:
       - zookeeper
-    ports:
-      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://host.docker.internal:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     networks:
@@ -58,8 +50,6 @@ services:
 
   backend:
     image: prajitviswanadha/resourceradar-backend:latest
-    ports:
-      - "0.0.0.0:3001:3001"
     environment:
       - INFLUX_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
       - INFLUX_ORG=server_stat
@@ -69,8 +59,6 @@ services:
       - PGDATABASE=sshinfo
       - PGPASSWORD=POSTGRESSECURE
       - PGPORT=5432
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     depends_on:
       - influxdb
       - postgres
@@ -80,12 +68,24 @@ services:
 
   frontend:
     image: prajitviswanadha/resourceradar-frontend:latest
-    ports:
-      - "0.0.0.0:80:80"
     depends_on:
       - backend
     environment:
       - REACT_APP_API_URL=
+    networks:
+      - resourceradar-network
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"      # Frontend
+      - "8086:8086"  # InfluxDB UI
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+      - influxdb
     networks:
       - resourceradar-network
 

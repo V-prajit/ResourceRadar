@@ -2,8 +2,6 @@ version: '3'
 services:
   influxdb:
     image: influxdb:latest
-    ports:
-      - "8086:8086"
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=your_username
@@ -13,8 +11,11 @@ services:
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
     volumes:
       - influxdb-data:/var/lib/influxdb2
+    ports:
+      - "8086:8086"  # Exposes InfluxDB UI on the host
     networks:
       - resourceradar-network
+    restart: unless-stopped
 
   postgres:
     image: postgres:latest
@@ -26,11 +27,14 @@ services:
       - POSTGRES_DB=sshinfo
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres-data:/var/lib/postgresql/data
     networks:
       - resourceradar-network
+    restart: unless-stopped
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
+    hostname: zookeeper
     ports:
       - "2181:2181"
     environment:
@@ -38,13 +42,16 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     networks:
       - resourceradar-network
+    restart: unless-stopped
 
   kafka:
     image: confluentinc/cp-kafka:latest
+    hostname: kafka
     depends_on:
       - zookeeper
     ports:
       - "29092:29092"
+      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -53,8 +60,32 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
     networks:
       - resourceradar-network
+    restart: unless-stopped
+
+  kafka-setup:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - kafka
+    command: >
+      bash -c "
+        echo 'Waiting for Kafka to be ready...'
+        cub kafka-ready -b kafka:29092 1 120 &&
+        echo 'Creating topics...' &&
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic cpu-metrics --partitions 1 --replication-factor 1 &&
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic memory-metrics --partitions 1 --replication-factor 1 &&
+        echo 'Successfully created the following topics:' &&
+        kafka-topics --bootstrap-server kafka:29092 --list
+      "
+    networks:
+      - resourceradar-network
+    restart: on-failure
 
   backend:
     image: prajitviswanadha/resourceradar-backend:latest
@@ -63,34 +94,39 @@ services:
       - INFLUX_ORG=server_stat
       - INFLUX_BUCKET=Server_Stats
       - PGUSER=postgres
-      - PGHOST=localhost
+      - PGHOST=postgres
       - PGDATABASE=sshinfo
       - PGPASSWORD=POSTGRESSECURE
       - PGPORT=5432
-      - INFLUXDB_URL=http://localhost:8086/
-      - KAFKA_BROKERS=localhost:29092
-    network_mode: "host"  # Use host network to access all networks the host can access
+      - INFLUXDB_URL=http://influxdb:8086/
+      - KAFKA_BROKERS=kafka:29092
+    # Attach the backend to both the internal network and the macvlan network
+    networks:
+      - resourceradar-network
+      - local_net
     depends_on:
       - influxdb
       - postgres
       - kafka
+      - kafka-setup
+    restart: unless-stopped
 
   frontend:
     image: prajitviswanadha/resourceradar-frontend:latest
     ports:
-      - "3000:80"  # Expose the frontend port locally for nginx to access
+      - "3000:80"  # Exposes the frontend on port 3000
     depends_on:
       - backend
     environment:
-      - REACT_APP_API_URL=
+      - REACT_APP_API_URL=http://backend  # Uses the backend container name on resourceradar-network
     networks:
       - resourceradar-network
+    restart: unless-stopped
 
   nginx:
     image: nginx:latest
     ports:
-      - "80:80"      # Frontend
-      - "8086:8086"  # InfluxDB UI
+      - "80:80"  # Exposes the Nginx reverse proxy on port 80
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -99,10 +135,23 @@ services:
       - influxdb
     networks:
       - resourceradar-network
+    restart: unless-stopped
 
 networks:
   resourceradar-network:
     driver: bridge
 
+  # Macvlan network for local network access (adjust these values as needed)
+  local_net:
+    driver: macvlan
+    driver_opts:
+      parent: eth0  # Change this to your actual host interface if different
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24   # Adjust to your local network’s subnet
+          gateway: 192.168.1.1      # Adjust to your network’s gateway
+
 volumes:
   influxdb-data:
+  postgres-data:
+

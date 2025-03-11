@@ -29,14 +29,24 @@ function SystemDashboard() {
         const apiUrl = `${protocol}//${hostname}${port}`;
         
         const setupSocketConnection = () => {
-            console.log("Initializing Socket.IO connection...");
+            const hostname = window.location.hostname;
+            const port = window.location.port ? `:${window.location.port}` : '';
             
-            const socket = io({
+            // Don't use protocol prefix for Socket.IO - it will choose the right protocol
+            // Socket.IO will use the same protocol as the page was loaded with
+            const socketUrl = `${hostname}${port}`;
+            
+            console.log("Initializing Socket.IO connection to:", socketUrl);
+            
+            const socket = io(socketUrl, {
               path: '/socket.io',
-              transports: ['websocket', 'polling'],
-              reconnectionAttempts: 5,
-              reconnectionDelay: 1000,
-              timeout: 20000
+              // Try polling first as it's more reliable through proxies
+              transports: ['polling', 'websocket'],
+              reconnectionAttempts: 10,
+              reconnectionDelay: 2000,
+              timeout: 30000,
+              forceNew: true,
+              autoConnect: true
             });
             
             socket.on('connect', () => {
@@ -45,11 +55,29 @@ function SystemDashboard() {
             
             socket.on('connect_error', (error) => {
               console.error('Socket.IO connection error:', error.message);
+              console.log('Will retry connection automatically...');
             });
             
             socket.on('disconnect', (reason) => {
               console.log('Socket.IO disconnected:', reason);
+              
+              // Reconnect after a delay if the disconnect reason is an error
+              if (reason === 'io server disconnect' || reason === 'transport close') {
+                console.log('Attempting to reconnect in 3 seconds...');
+                setTimeout(() => {
+                  console.log('Reconnecting...');
+                  socket.connect();
+                }, 3000);
+              }
             });
+            
+            // Force a reconnect after 5 seconds if not connected
+            setTimeout(() => {
+              if (!socket.connected) {
+                console.log('Socket still not connected after timeout, forcing reconnect...');
+                socket.disconnect().connect();
+              }
+            }, 5000);
             
             return socket;
         };

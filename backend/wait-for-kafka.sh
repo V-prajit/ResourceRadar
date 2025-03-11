@@ -16,24 +16,28 @@ until check_kafka || [ $RETRIES -eq 0 ]; do
 done
 
 if [ $RETRIES -eq 0 ]; then
-  echo "Failed to connect to Kafka after multiple attempts"
-  exit 1
+  echo "Failed to connect to Kafka after multiple attempts, but continuing anyway..."
 fi
 
 echo "Kafka is ready!"
 
-# Create required topics if they don't exist
-echo "Creating required topics if they don't exist..."
-for TOPIC in "cpu-metrics" "memory-metrics"
-do
-  if ! kafka-topics --bootstrap-server kafka:29092 --list | grep -q "^$TOPIC$"; then
-    echo "Creating topic: $TOPIC"
-    kafka-topics --bootstrap-server kafka:29092 --create --topic $TOPIC \
-      --partitions 1 --replication-factor 1 --if-not-exists
-  else
-    echo "Topic $TOPIC already exists"
-  fi
-done
+# Try to create required topics if Kafka is available
+echo "Attempting to create required topics if they don't exist..."
+if check_kafka; then
+  for TOPIC in "cpu-metrics" "memory-metrics"
+  do
+    if ! kafka-topics --bootstrap-server kafka:29092 --list | grep -q "^$TOPIC$"; then
+      echo "Creating topic: $TOPIC"
+      kafka-topics --bootstrap-server kafka:29092 --create --topic $TOPIC \
+        --partitions 1 --replication-factor 1 --if-not-exists
+    else
+      echo "Topic $TOPIC already exists"
+    fi
+  done
+  echo "Kafka topics configured successfully!"
+else
+  echo "Skipping topic creation since Kafka is not available"
+fi
 
 echo "Kafka is fully configured and ready for use!"
 

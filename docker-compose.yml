@@ -77,7 +77,7 @@ services:
       - app-network
     restart: unless-stopped
 
-  # Modified backend with resilient startup
+  # Backend service with direct app start
   backend:
     build: 
       context: ./backend
@@ -95,6 +95,7 @@ services:
       - PGPORT=5432
       - INFLUXDB_URL=http://influxdb:8086/
       - KAFKA_BROKERS=kafka:29092
+      - KAFKAJS_NO_PARTITIONER_WARNING=1
     depends_on:
       - influxdb
       - postgres
@@ -102,15 +103,7 @@ services:
     networks:
       - app-network
     restart: always  # Important: Always restart if it exits
-    # Custom startup script that won't exit if Kafka is unavailable
-    command: >
-      bash -c "
-        echo 'Starting backend service...'
-        echo 'Giving time for Kafka to start up...'
-        sleep 30
-        echo 'Starting application regardless of Kafka status'
-        node src/app.js
-      "
+    entrypoint: ["node", "src/app.js"]  # Skip wait-for-kafka.sh entirely
 
   frontend:
     build: ./frontend

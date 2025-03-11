@@ -239,4 +239,5 @@ setInterval(monitorAndBroadcast, 1000);
 // Use server.listen instead of app.listen for Socket.IO
 server.listen(express_port, '0.0.0.0', () => {
     console.log(`Server running with WebSockets on port ${express_port}.`);
+    console.log(`Server is listening on all network interfaces (0.0.0.0).`);
 });

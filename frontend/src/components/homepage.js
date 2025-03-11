@@ -34,13 +34,32 @@ function HomePage(){
         const apiUrl = `${protocol}//${hostname}${port}/api`;
         
         console.log("Connecting to API at:", apiUrl);
-        fetch(`${apiUrl}/`)
-            .then(response => response.json())
+        
+        // Add retry logic for API connection
+        const fetchWithRetry = (url, retries = 3, delay = 2000) => {
+            return fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`API responded with status ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .catch(error => {
+                    if (retries > 0) {
+                        console.log(`Retrying API connection in ${delay}ms... (${retries} attempts left)`);
+                        return new Promise(resolve => setTimeout(resolve, delay))
+                            .then(() => fetchWithRetry(url, retries - 1, delay));
+                    }
+                    throw error;
+                });
+        };
+        
+        fetchWithRetry(`${apiUrl}/`)
             .then(data => {
                 console.log("Systems data loaded:", data);
                 setSystems(data);
             })
-            .catch(error => console.error('Error fetching systems:', error));
+            .catch(error => console.error('Error fetching systems after retries:', error));
     }, []);
     
     const toggleDrawer = () => {

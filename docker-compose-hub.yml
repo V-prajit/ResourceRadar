@@ -89,6 +89,8 @@ services:
 
   backend:
     image: prajitviswanadha/resourceradar-backend:latest
+    ports:
+      - "3001:3001"
     environment:
       - INFLUX_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
       - INFLUX_ORG=server_stat
@@ -113,11 +115,11 @@ services:
   frontend:
     image: prajitviswanadha/resourceradar-frontend:latest
     ports:
-      - "3000:80"  # Exposes the frontend on port 3000
+      - "3000:80" 
     depends_on:
       - backend
     environment:
-      - REACT_APP_API_URL=http://backend  # Frontend connects to backend via the internal network
+      - REACT_APP_API_URL=/api
     networks:
       - resourceradar-network
     restart: unless-stopped
@@ -147,9 +149,8 @@ networks:
       parent: wlp1s0  # Use your wireless interface as listed in ip addr
     ipam:
       config:
-        - subnet: 10.184.136.0/23   # Adjust to match your network's subnet
-          gateway: 10.184.136.1      # Replace with your actual gateway (check with ip route)
-
+        - subnet: 10.184.136.0/23
+          gateway: 10.184.136.1
 volumes:
   influxdb-data:
   postgres-data:

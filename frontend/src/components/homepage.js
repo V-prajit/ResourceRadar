@@ -27,9 +27,7 @@ function HomePage(){
     const [drawerOpen, setDrawerOpen] = useState(false);
     const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
     
-    // Fetch systems to check if any exist
     useEffect(() => {
-        // With the nginx proxy setup, we now access the backend through /api
         const hostname = window.location.hostname;
         const protocol = window.location.protocol;
         const port = window.location.port ? `:${window.location.port}` : '';

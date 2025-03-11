@@ -28,9 +28,33 @@ function SystemDashboard() {
         const port = window.location.port ? `:${window.location.port}` : '';
         const apiUrl = `${protocol}//${hostname}${port}`;
         
-        // Create socket connection, pointing to /api for the socket.io connection
-        const socketUrl = `${apiUrl}/api`;
-        const newSocket = io(socketUrl);
+        const setupSocketConnection = () => {
+            console.log("Initializing Socket.IO connection...");
+            
+            const socket = io({
+              path: '/socket.io',
+              transports: ['websocket', 'polling'],
+              reconnectionAttempts: 5,
+              reconnectionDelay: 1000,
+              timeout: 20000
+            });
+            
+            socket.on('connect', () => {
+              console.log('Socket.IO connected successfully!', socket.id);
+            });
+            
+            socket.on('connect_error', (error) => {
+              console.error('Socket.IO connection error:', error.message);
+            });
+            
+            socket.on('disconnect', (reason) => {
+              console.log('Socket.IO disconnected:', reason);
+            });
+            
+            return socket;
+        };
+          
+        const newSocket = setupSocketConnection();
         setSocket(newSocket);
 
         // Listen for resource data updates

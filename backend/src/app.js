@@ -8,8 +8,10 @@ const express_port = 3001;
 const cors = require('cors');
 const corsOptions = {
     origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
-};
+  };
 app.use(cors(corsOptions));
 const db_model = require('./API/postgres_connect.js');
 app.use(express.json())
@@ -21,10 +23,16 @@ const { InfluxDB } = require('@influxdata/influxdb-client');
 const {monitorAllSystems, SendResources, deleteInfluxData} = require('./SSH_Client.js')
 const { startConsumer } = require('./kafka/consumer');
 
-// Set up Socket.IO
 const io = new Server(server, {
-  cors: corsOptions
-});
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST'],
+      credentials: true
+    },
+    path: '/socket.io',
+    allowEIO3: true,
+    transports: ['websocket', 'polling']
+  });
 
 startConsumer()
     .then(() => console.log('Kafka consumer started'))
@@ -229,6 +237,6 @@ const monitorAndBroadcast = async () => {
 setInterval(monitorAndBroadcast, 1000);
 
 // Use server.listen instead of app.listen for Socket.IO
-server.listen(express_port, () => {
+server.listen(express_port, '0.0.0.0', () => {
     console.log(`Server running with WebSockets on port ${express_port}.`);
 });

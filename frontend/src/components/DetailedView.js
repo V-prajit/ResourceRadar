@@ -74,8 +74,33 @@ function SystemDetails(){
         const port = window.location.port ? `:${window.location.port}` : '';
         const apiUrl = `${protocol}//${hostname}${port}/api`;
         
-        // Create socket connection
-        const newSocket = io(apiUrl);
+        const setupSocketConnection = () => {
+            console.log("Initializing Socket.IO connection...");
+            
+            const socket = io({
+              path: '/socket.io',
+              transports: ['websocket', 'polling'],
+              reconnectionAttempts: 5,
+              reconnectionDelay: 1000,
+              timeout: 20000
+            });
+            
+            socket.on('connect', () => {
+              console.log('Socket.IO connected successfully!', socket.id);
+            });
+            
+            socket.on('connect_error', (error) => {
+              console.error('Socket.IO connection error:', error.message);
+            });
+            
+            socket.on('disconnect', (reason) => {
+              console.log('Socket.IO disconnected:', reason);
+            });
+            
+            return socket;
+        };
+          
+        const newSocket = setupSocketConnection();
         setSocket(newSocket);
         
         // Set up initial connection

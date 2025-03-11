@@ -1,33 +1,6 @@
 version: '3'
+
 services:
-  influxdb:
-    image: influxdb:latest
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=your_username
-      - DOCKER_INFLUXDB_INIT_PASSWORD=your_password
-      - DOCKER_INFLUXDB_INIT_ORG=server_stat
-      - DOCKER_INFLUXDB_INIT_BUCKET=Server_Stats
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
-    ports:
-      - "8086:8086"
-    volumes:
-      - influxdb-data:/var/lib/influxdb2
-    restart: unless-stopped
-
-  postgres:
-    image: postgres:latest
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=POSTGRESSECURE
-      - POSTGRES_DB=sshinfo
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-      - postgres-data:/var/lib/postgresql/data
-    restart: unless-stopped
-
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     hostname: zookeeper
@@ -36,7 +9,13 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -50,34 +29,55 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      # Increase timeouts for Docker environments
-      KAFKA_OFFSETS_TOPIC_NUM_PARTITIONS: 1
-      KAFKA_MIN_INSYNC_REPLICAS: 1
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:29092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Skip kafka-setup for now - it might be causing issues
+
+  influxdb:
+    image: influxdb:latest
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=your_username
+      - DOCKER_INFLUXDB_INIT_PASSWORD=your_password
+      - DOCKER_INFLUXDB_INIT_ORG=server_stat
+      - DOCKER_INFLUXDB_INIT_BUCKET=Server_Stats
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=F563snz6Ha80Y2pxMHU-6yVonlIrUs-JmhVPVJYY_e4VgwXWq34EtSx5MNES-Lubnz-D7-Kfa8Rlb3gH8aLmRQ==
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    networks:
+      - app-network
     restart: unless-stopped
 
-  # Add a service to initialize Kafka topics
-  kafka-setup:
-    image: confluentinc/cp-kafka:latest
-    depends_on:
-      - kafka
-    command: >
-      bash -c "
-        echo 'Waiting for Kafka to be ready...'
-        cub kafka-ready -b kafka:29092 1 120
-        echo 'Creating topics...'
-        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic cpu-metrics --partitions 1 --replication-factor 1
-        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic memory-metrics --partitions 1 --replication-factor 1
-        echo 'Successfully created the following topics:'
-        kafka-topics --bootstrap-server kafka:29092 --list
-      "
-    restart: on-failure
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=POSTGRESSECURE
+      - POSTGRES_DB=sshinfo
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
 
+  # Modified backend with resilient startup
   backend:
     build: 
       context: ./backend
@@ -99,18 +99,43 @@ services:
       - influxdb
       - postgres
       - kafka
-      - kafka-setup
-    restart: unless-stopped
+    networks:
+      - app-network
+    restart: always  # Important: Always restart if it exits
+    # Custom startup script that won't exit if Kafka is unavailable
+    command: >
+      bash -c "
+        echo 'Starting backend service...'
+        echo 'Giving time for Kafka to start up...'
+        sleep 30
+        echo 'Starting application regardless of Kafka status'
+        node src/app.js
+      "
 
   frontend:
     build: ./frontend
-    ports:
-      - "80:80"  # Expose port 80 for the frontend app
-    depends_on:
-      - backend  # Ensure backend starts before frontend
     environment:
-      - REACT_APP_API_URL=http://backend:3001
+      - REACT_APP_API_URL=/api
+    networks:
+      - app-network
     restart: unless-stopped
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   influxdb-data:

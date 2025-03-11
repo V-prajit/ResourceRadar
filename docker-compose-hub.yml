@@ -75,7 +75,7 @@ services:
       - kafka
     command: >
       bash -c "
-        echo 'Waiting for Kafka to be ready...'
+        echo 'Waiting for Kafka to be ready...' &&
         cub kafka-ready -b kafka:29092 1 120 &&
         echo 'Creating topics...' &&
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic cpu-metrics --partitions 1 --replication-factor 1 &&
@@ -100,7 +100,6 @@ services:
       - PGPORT=5432
       - INFLUXDB_URL=http://influxdb:8086/
       - KAFKA_BROKERS=kafka:29092
-    # Attach the backend to both the internal network and the macvlan network
     networks:
       - resourceradar-network
       - local_net
@@ -118,7 +117,7 @@ services:
     depends_on:
       - backend
     environment:
-      - REACT_APP_API_URL=http://backend  # Uses the backend container name on resourceradar-network
+      - REACT_APP_API_URL=http://backend  # Frontend connects to backend via the internal network
     networks:
       - resourceradar-network
     restart: unless-stopped
@@ -126,7 +125,7 @@ services:
   nginx:
     image: nginx:latest
     ports:
-      - "80:80"  # Exposes the Nginx reverse proxy on port 80
+      - "80:80"  # Exposes Nginx on port 80
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -141,17 +140,16 @@ networks:
   resourceradar-network:
     driver: bridge
 
-  # Macvlan network for local network access (adjust these values as needed)
+  # Macvlan network for local network access – update these settings based on your Fedora laptop:
   local_net:
     driver: macvlan
     driver_opts:
-      parent: eth0  # Change this to your actual host interface if different
+      parent: wlp1s0  # Use your wireless interface as listed in ip addr
     ipam:
       config:
-        - subnet: 192.168.1.0/24   # Adjust to your local network’s subnet
-          gateway: 192.168.1.1      # Adjust to your network’s gateway
+        - subnet: 10.184.136.0/23   # Adjust to match your network's subnet
+          gateway: 10.184.136.1      # Replace with your actual gateway (check with ip route)
 
 volumes:
   influxdb-data:
   postgres-data:
-

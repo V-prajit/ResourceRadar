@@ -22,6 +22,30 @@ function SystemDashboard() {
     const [systems, setSystems] = useState([]);
     const [socket, setSocket] = useState(null);
 
+    // Function to fetch machines data via API
+    const fetchMachines = () => {
+        const hostname = window.location.hostname;
+        const protocol = window.location.protocol;
+        const port = window.location.port ? `:${window.location.port}` : '';
+        const apiUrl = `${protocol}//${hostname}${port}/api`;
+        
+        console.log("Fetching machines data from API URL:", apiUrl);
+        fetch(apiUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`API responded with status ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Received machine data:", data);
+                setSystems(data);
+            })
+            .catch(error => {
+                console.error("Error fetching machines:", error);
+            });
+    };
+
     useEffect(() => {
         const hostname = window.location.hostname;
         const protocol = window.location.protocol;
@@ -90,11 +114,20 @@ function SystemDashboard() {
             setSystems(data);
         });
 
+        // Initial data fetch
+        fetchMachines();
+
         // Clean up on component unmount
         return () => {
             newSocket.disconnect();
         };
     }, []);
+
+    // Handle machine update (after add/edit/delete)
+    const handleMachineUpdate = () => {
+        console.log("Machine updated, refreshing data...");
+        fetchMachines();
+    };
 
     return (
         <Box sx={{ width: '100%' }}>
@@ -104,7 +137,7 @@ function SystemDashboard() {
             <Grid container spacing={3}>
                 {systems.map((system, index) => (
                     <Grid item xs={12} sm={6} md={4} key={index}>
-                        <SystemCard system={system} onUpdate={() => setSystems([])} />
+                        <SystemCard system={system} onUpdate={handleMachineUpdate} />
                     </Grid>
                 ))}
             </Grid>
@@ -152,20 +185,47 @@ function SystemCard({system, onUpdate}) {
             const port = window.location.port ? `:${window.location.port}` : '';
             const apiUrl = `${protocol}//${hostname}${port}/api`;
             
-            fetch(`${apiUrl}/machine/${encodeURIComponent(system.name)}`, {
+            console.log(`Deleting system: ${system.name}`);
+            
+            // Try using the direct backend port for testing
+            const backendUrl = `${protocol}//${hostname}:3001/api/machine/${encodeURIComponent(system.name)}`;
+            console.log(`DELETE request to (direct backend): ${backendUrl}`);
+            
+            fetch(backendUrl, {
                 method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
             })
             .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to delete the system');
-                }
-                return response.json();
+                console.log('Delete response status:', response.status);
+                
+                // Try to parse JSON even if response is not ok - to get error details
+                return response.text().then(text => {
+                    try {
+                        return text ? JSON.parse(text) : {};
+                    } catch (e) {
+                        console.log('Response is not JSON:', text);
+                        return {};
+                    }
+                }).then(data => {
+                    if (!response.ok) {
+                        throw new Error(data.error || `Failed to delete the system (${response.status})`);
+                    }
+                    return data;
+                });
             })
             .then(data => {
                 console.log('Delete successful', data);
+                // Show success message to user
+                alert(`Successfully deleted system: ${system.name}`);
+                // Refresh the dashboard
                 if (onUpdate) onUpdate();
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error('Error deleting system:', error);
+                alert(`Failed to delete system: ${error.message}`);
+            });
         }
     };
 

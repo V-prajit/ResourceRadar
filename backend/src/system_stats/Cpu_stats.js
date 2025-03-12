@@ -3,28 +3,93 @@ const { sendMetric } = require('../kafka/producer');
 
 const fetchCpuUsage = (sshClient, system) => {
     return new Promise((resolve, reject) => {
-        sshClient.exec("top -b -d 0.5 -n 3 | grep '%Cpu'", (err, stream) => {
+        // First, detect OS type
+        sshClient.exec("uname", (err, stream) => {
             if (err) {
-                console.error(`SSH Command Execution Error for ${system.name}:`, err);
+                console.error(`SSH Command Error detecting OS for ${system.name}:`, err);
                 reject(err);
                 return;
             }
             
-            let dataReceived = false;
-            let output = '';
+            let osType = '';
             
             stream.on("data", (data) => {
-                dataReceived = true;
-                output += data.toString();
+                osType = data.toString().trim().toLowerCase();
+                console.log(`Detected OS type for ${system.name}: ${osType}`);
                 
-                // Process each line as it comes in
+                // Choose appropriate command based on OS
+                let cpuCommand;
+                if (osType === 'darwin') {
+                    // macOS command
+                    cpuCommand = "top -l 2 -n 0 -s 1 | grep 'CPU usage' | tail -1";
+                } else if (osType === 'linux') {
+                    // Linux command
+                    cpuCommand = "top -b -d 0.5 -n 3 | grep '%Cpu'";
+                } else {
+                    // Default to Linux command for other systems
+                    console.log(`Using Linux command for unknown OS: ${osType}`);
+                    cpuCommand = "top -b -d 0.5 -n 3 | grep '%Cpu'";
+                }
+                
+                // Now execute the appropriate CPU command
+                executeCpuCommand(sshClient, system, cpuCommand, osType, resolve, reject);
+            });
+            
+            stream.stderr.on("data", (data) => {
+                console.error(`SSH STDERR when detecting OS for ${system.name}:`, data.toString());
+            });
+            
+            stream.on("close", (code) => {
+                if (code !== 0) {
+                    console.error(`OS detection failed with code ${code} for ${system.name}`);
+                    // Default to Linux command as fallback
+                    const cpuCommand = "top -b -d 0.5 -n 3 | grep '%Cpu'";
+                    executeCpuCommand(sshClient, system, cpuCommand, 'linux', resolve, reject);
+                }
+            });
+        });
+    });
+};
+
+// Function to execute CPU command based on detected OS
+function executeCpuCommand(sshClient, system, command, osType, resolve, reject) {
+    sshClient.exec(command, (err, stream) => {
+        if (err) {
+            console.error(`SSH Command Execution Error for ${system.name}:`, err);
+            // Send zero value on error and resolve to avoid hanging
+            sendMetric('cpu-metrics', {
+                name: system.name,
+                value: 0,
+                timestamp: new Date().toISOString()
+            });
+            resolve();
+            return;
+        }
+        
+        let dataReceived = false;
+        let output = '';
+        
+        stream.on("data", (data) => {
+            dataReceived = true;
+            output += data.toString();
+            
+            let cpuUsage = 0;
+            
+            // Parse output based on OS type
+            if (osType === 'darwin') {
+                // macOS format: "CPU usage: 5.55% user, 10.95% sys, 83.49% idle"
+                const macMatch = output.match(/(\d+\.\d+)%\s+user,\s+(\d+\.\d+)%\s+sys/);
+                if (macMatch) {
+                    const userCpu = parseFloat(macMatch[1]);
+                    const sysCpu = parseFloat(macMatch[2]);
+                    cpuUsage = userCpu + sysCpu;
+                }
+            } else {
+                // Linux format parsing
                 const lines = output.split('\n').filter(line => line.includes('%Cpu'));
-                
-                // Only process the last reading which should be the most accurate
-                if (lines.length >= 2) {
+                if (lines.length >= 1) {
                     const lastLine = lines[lines.length - 1];
                     
-                    let cpuUsage = 0;
                     if (lastLine.includes('us') && lastLine.includes('sy')) {
                         // Format: "%Cpu(s):  5.9 us,  2.4 sy, ..."
                         const userMatch = lastLine.match(/(\d+\.\d+)\s+us/);
@@ -42,34 +107,34 @@ const fetchCpuUsage = (sshClient, system) => {
                             cpuUsage = parseFloat(match[1]);
                         }
                     }
-                    
-                    console.log(`Processed CPU usage for ${system.name}: ${cpuUsage}`);
-                    
-                    sendMetric('cpu-metrics', {
-                        name: system.name,
-                        value: cpuUsage,
-                        timestamp: new Date().toISOString()
-                    });
                 }
-            });
-
-            stream.on('close', () => {
-                if (!dataReceived) {
-                    console.error(`No CPU data received for ${system.name}`);
-                    sendMetric('cpu-metrics', {
-                        name: system.name,
-                        value: 0,
-                        timestamp: new Date().toISOString()
-                    });
-                }
-                resolve();
-            });
-
-            stream.stderr.on("data", (data) => {
-                console.error(`SSH STDERR for ${system.name} CPU:`, data.toString());
+            }
+            
+            console.log(`Processed CPU usage for ${system.name}: ${cpuUsage}`);
+            
+            sendMetric('cpu-metrics', {
+                name: system.name,
+                value: cpuUsage,
+                timestamp: new Date().toISOString()
             });
         });
+
+        stream.on('close', () => {
+            if (!dataReceived) {
+                console.error(`No CPU data received for ${system.name}`);
+                sendMetric('cpu-metrics', {
+                    name: system.name,
+                    value: 0,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            resolve();
+        });
+
+        stream.stderr.on("data", (data) => {
+            console.error(`SSH STDERR for ${system.name} CPU:`, data.toString());
+        });
     });
-};
+}
 
 module.exports = fetchCpuUsage;

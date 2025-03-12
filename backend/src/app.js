@@ -79,7 +79,7 @@ app.get('/resourceusage', async (req, res) => {
     }
 });
 
-app.post('/api/data/graph',async (req, res) => {
+app.post('/data/graph',async (req, res) => {
     const { host, timeFrame} = req.body;
     try{
         const data = await SendGraphData(host, timeFrame);
@@ -88,10 +88,10 @@ app.post('/api/data/graph',async (req, res) => {
         console.error("Error retreiveing data:", error);
         res.status(500).send('Error retreiveing data')
     }
-    
 })
 
-app.delete('/api/machine/:name', async (req, res) => {
+// Create a handler function for deleting machines
+const deleteMachineHandler = async (req, res) => {
     const { name } = req.params;
     try {
         console.log(`DELETE request received for machine: ${name}`);
@@ -116,11 +116,15 @@ app.delete('/api/machine/:name', async (req, res) => {
     
         // Always respond with success if PostgreSQL deletion worked
         res.status(200).json({ message: `Machine ${name} deleted successfully from PostgreSQL and InfluxDB` });
-      } catch (error) {
+    } catch (error) {
         console.error('Error during machine deletion:', error);
         res.status(500).json({ error: error.message });
-      }
-});
+    }
+};
+
+// Register both routes to handle NGINX routing and direct access
+app.delete('/machine/:name', deleteMachineHandler);
+app.delete('/api/machine/:name', deleteMachineHandler);
 
 // Add a utility endpoint to delete orphaned InfluxDB data
 app.delete('/api/cleanup-influxdb', async (req, res) => {
@@ -175,8 +179,8 @@ app.delete('/api/cleanup-influxdb', async (req, res) => {
     }
 });
 
-
-app.put('/api/machine/:name', async (req, res) => {
+// Create a handler function for updating machines
+const updateMachineHandler = async (req, res) => {
   const { name } = req.params;
   try {
     const existingMachine = await db_model.getMachineDetails(name);
@@ -202,7 +206,11 @@ app.put('/api/machine/:name', async (req, res) => {
     console.error('Error during machine update:', error);
     res.status(500).json({ error: error.message });
   }
-});
+};
+
+// Register both routes to handle NGINX routing and direct access
+app.put('/machine/:name', updateMachineHandler);
+app.put('/api/machine/:name', updateMachineHandler);
 
 // Set up Socket.IO connection events
 io.on('connection', (socket) => {

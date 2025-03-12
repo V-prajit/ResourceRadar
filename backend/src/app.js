@@ -34,8 +34,11 @@ const io = new Server(server, {
     transports: ['websocket', 'polling']
   });
 
+// Just print a simple message to console when Kafka connects
+console.log('Attempting to connect to Kafka...');
+
 startConsumer()
-    .then(() => console.log('Kafka consumer started'))
+    .then(() => console.log('✅ KAFKA CONNECTED: Consumer started successfully'))
     .catch(err => console.error ('Failed to Start kafka consumer: ', err));
 
 app.get('/', (req, res) => {
@@ -171,6 +174,7 @@ app.delete('/api/cleanup-influxdb', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 app.put('/api/machine/:name', async (req, res) => {
   const { name } = req.params;

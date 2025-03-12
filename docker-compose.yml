@@ -77,7 +77,7 @@ services:
       - app-network
     restart: unless-stopped
 
-  # Backend service with direct app start
+  # Backend service with improved Kafka monitoring
   backend:
     build: 
       context: ./backend
@@ -103,7 +103,9 @@ services:
     networks:
       - app-network
     restart: always  # Important: Always restart if it exits
-    entrypoint: ["node", "src/app.js"]  # Skip wait-for-kafka.sh entirely
+    # Use the improved wait-for-kafka script with less verbose output
+    entrypoint: ["/usr/local/bin/wait-for-kafka.sh"]
+    command: ["node", "src/app.js"]
 
   frontend:
     build: ./frontend

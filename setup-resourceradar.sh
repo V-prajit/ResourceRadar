@@ -12,13 +12,13 @@ echo -e "${GREEN}===================================${NC}"
 echo -e "${YELLOW}Downloading configuration files to current directory...${NC}"
 
 echo "Downloading nginx.conf..."
-curl -sSL -o nginx.conf "https://raw.githubusercontent.com/prajitviswanadha/resourceradar/main/nginx.conf"
+curl -sSL -o nginx.conf "https://raw.githubusercontent.com/V-prajit/ResourceRadar/refs/heads/main/nginx.conf"
 
 echo "Downloading init.sql..."
-curl -sSL -o init.sql "https://raw.githubusercontent.com/prajitviswanadha/resourceradar/main/init.sql"
+curl -sSL -o init.sql "https://raw.githubusercontent.com/V-prajit/ResourceRadar/refs/heads/main/init.sql"
 
 echo "Downloading docker-compose.yml..."
-curl -sSL -o docker-compose.yml "https://raw.githubusercontent.com/prajitviswanadha/resourceradar/main/docker-compose-hub.yml"
+curl -sSL -o docker-compose.yml "https://raw.githubusercontent.com/V-prajit/ResourceRadar/refs/heads/main/docker-compose-hub.yml"
 
 echo -e "${GREEN}All files downloaded and configured.${NC}"
 echo ""

@@ -25,24 +25,34 @@ echo ""
 echo -e "${YELLOW}Would you like to start ResourceRadar now? (y/n)${NC}"
 read -p "" START_NOW
 
+# Determine which docker compose command is available, prioritizing the modern 'docker compose'
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+elif command -v docker-compose >/dev/null 2>&1; then
+    DOCKER_COMPOSE="docker-compose"
+else
+    echo -e "${RED}Error: Neither 'docker compose' nor 'docker-compose' is available on this system.${NC}"
+    exit 1
+fi
+
 if [[ $START_NOW =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}Starting ResourceRadar...${NC}"
-    docker-compose up -d
+    $DOCKER_COMPOSE up -d
     
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}ResourceRadar is now running!${NC}"
         echo -e "Access the dashboard at ${YELLOW}http://localhost${NC}"
     else
         echo -e "${RED}There was an error starting ResourceRadar.${NC}"
-        echo "Check the logs with 'docker-compose logs' for more information."
+        echo "Check the logs with '$DOCKER_COMPOSE logs' for more information."
     fi
 else
-    echo -e "${YELLOW}You can start ResourceRadar later with 'docker-compose up -d'${NC}"
+    echo -e "${YELLOW}You can start ResourceRadar later with '$DOCKER_COMPOSE up -d'${NC}"
 fi
 
 echo ""
 echo -e "${GREEN}Useful commands:${NC}"
-echo -e "  ${YELLOW}docker-compose ps${NC}         - Check service status"
-echo -e "  ${YELLOW}docker-compose logs -f${NC}    - Follow logs"
-echo -e "  ${YELLOW}docker-compose down${NC}       - Stop all services"
-echo -e "  ${YELLOW}docker-compose up -d${NC}      - Start all services"
+echo -e "  ${YELLOW}$DOCKER_COMPOSE ps${NC}         - Check service status"
+echo -e "  ${YELLOW}$DOCKER_COMPOSE logs -f${NC}    - Follow logs"
+echo -e "  ${YELLOW}$DOCKER_COMPOSE down${NC}       - Stop all services"
+echo -e "  ${YELLOW}$DOCKER_COMPOSE up -d${NC}      - Start all services"

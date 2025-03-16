@@ -20,8 +20,7 @@ const fetchMemoryUsage = (sshClient, system, writeApi) => {
                 // Choose appropriate command based on OS
                 let memCommand;
                 if (osType === 'darwin') {
-                    // Better macOS command to get used memory directly in MB
-                    memCommand = "top -l 1 | grep PhysMem | awk '{print $2}' | tr -d 'M'";
+                    memCommand = 'vm_stat | perl -ne \'/page size of (\\d+)/ && print $1\' | { read page_size; vm_stat | grep "Pages active\\|Pages wired" | awk -v page_size="$page_size" \'{ sum += $NF * page_size / 1024 / 1024} END { print sum }\' ; }';
                 } else if (osType === 'linux') {
                     // Linux command
                     memCommand = "free -m | grep Mem | awk '{print $3}'";
@@ -76,24 +75,13 @@ function executeMemoryCommand(sshClient, system, command, osType, resolve, rejec
             
             let memoryUsage = 0;
             
-            // Parse output based on OS type
-            if (osType === 'darwin') {
-                // For macOS, the top command already gives us memory usage in MB
-                memoryUsage = parseInt(output);
-                console.log(`macOS memory usage: ${memoryUsage}MB (raw output: "${output}")`);
+            if (osType === 'darwin' || osType === 'linux') {
+                memoryUsage = parseFloat(output);
                 
                 if (isNaN(memoryUsage)) {
-                    console.error(`Invalid macOS memory value: "${output}"`);
+                    console.error(`Invalid memory value: "${output}"`);
                     memoryUsage = 0;
                 }
-            } else {
-                // Linux already returns memory in MB
-                memoryUsage = parseFloat(output);
-            }
-            
-            if (isNaN(memoryUsage)) {
-                console.error(`Invalid memory usage value for ${system.name}: "${output}"`);
-                memoryUsage = 0;
             }
             
             console.log(`Processed memory usage for ${system.name}: ${memoryUsage}MB`);

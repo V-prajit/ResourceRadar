@@ -3,7 +3,7 @@ const { sendMetric } = require('../kafka/producer');
 
 const fetchCpuUsage = (sshClient, system) => {
     return new Promise((resolve, reject) => {
-        // First, detect OS type
+        //detect OS type
         sshClient.exec("uname", (err, stream) => {
             if (err) {
                 console.error(`SSH Command Error detecting OS for ${system.name}:`, err);
@@ -17,13 +17,11 @@ const fetchCpuUsage = (sshClient, system) => {
                 osType = data.toString().trim().toLowerCase();
                 console.log(`Detected OS type for ${system.name}: ${osType}`);
                 
-                // Choose appropriate command based on OS
                 let cpuCommand;
                 if (osType === 'darwin') {
                     // macOS command
-                    cpuCommand = "top -l 2 -n 0 -s 1 | grep 'CPU usage' | tail -1";
+                    cpuCommand = "top -l 1 -n 0 -s 0 | grep 'CPU usage' | tail -1 | awk '{print $3+$5}'";
                 } else if (osType === 'linux') {
-                    // Linux command
                     cpuCommand = "top -b -d 0.5 -n 3 | grep '%Cpu'";
                 } else {
                     // Default to Linux command for other systems
@@ -42,7 +40,6 @@ const fetchCpuUsage = (sshClient, system) => {
             stream.on("close", (code) => {
                 if (code !== 0) {
                     console.error(`OS detection failed with code ${code} for ${system.name}`);
-                    // Default to Linux command as fallback
                     const cpuCommand = "top -b -d 0.5 -n 3 | grep '%Cpu'";
                     executeCpuCommand(sshClient, system, cpuCommand, 'linux', resolve, reject);
                 }
@@ -51,12 +48,10 @@ const fetchCpuUsage = (sshClient, system) => {
     });
 };
 
-// Function to execute CPU command based on detected OS
 function executeCpuCommand(sshClient, system, command, osType, resolve, reject) {
     sshClient.exec(command, (err, stream) => {
         if (err) {
             console.error(`SSH Command Execution Error for ${system.name}:`, err);
-            // Send zero value on error and resolve to avoid hanging
             sendMetric('cpu-metrics', {
                 name: system.name,
                 value: 0,
@@ -77,12 +72,9 @@ function executeCpuCommand(sshClient, system, command, osType, resolve, reject) 
             
             // Parse output based on OS type
             if (osType === 'darwin') {
-                // macOS format: "CPU usage: 5.55% user, 10.95% sys, 83.49% idle"
-                const macMatch = output.match(/(\d+\.\d+)%\s+user,\s+(\d+\.\d+)%\s+sys/);
-                if (macMatch) {
-                    const userCpu = parseFloat(macMatch[1]);
-                    const sysCpu = parseFloat(macMatch[2]);
-                    cpuUsage = userCpu + sysCpu;
+                const value = parseFloat(output.trim());
+                if (!isNaN(value)) {
+                    cpuUsage = value;
                 }
             } else {
                 // Linux format parsing

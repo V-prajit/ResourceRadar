@@ -76,9 +76,7 @@ services:
     restart: unless-stopped
 
   backend:
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
+    image: prajitviswanadha/resourceradar-backend:latest
     ports:
       - "3001:3001"
     environment:
@@ -104,7 +102,7 @@ services:
     command: ["node", "src/app.js"]
 
   frontend:
-    build: ./frontend
+    image: prajitviswanadha/resourceradar-frontend:latest
     environment:
       - REACT_APP_API_URL=/api
     networks:

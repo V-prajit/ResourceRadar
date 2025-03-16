@@ -1,11 +1,8 @@
 #!/bin/bash
 
-# Script to build, tag and publish Docker images for ResourceRadar
-
-# Set colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
@@ -13,8 +10,9 @@ if ! docker info > /dev/null 2>&1; then
   exit 1
 fi
 
-# Get Docker Hub username
-read -p "Enter your Docker Hub username: " DOCKER_USERNAME
+# Set Docker Hub username
+DOCKER_USERNAME="prajitviswanadha"
+echo -e "${YELLOW}Using Docker Hub username: ${DOCKER_USERNAME}${NC}"
 
 # Check if logged in to Docker Hub
 echo -e "${YELLOW}Checking Docker Hub login...${NC}"
@@ -39,8 +37,7 @@ docker push $DOCKER_USERNAME/resourceradar-backend:latest
 
 # Create docker-compose file for users
 echo -e "${YELLOW}Creating docker-compose file for distribution...${NC}"
-sed -e "s|image: prajitviswanadha/resourceradar-backend:latest|image: $DOCKER_USERNAME/resourceradar-backend:latest|g" \
-    -e "s|image: prajitviswanadha/resourceradar-frontend:latest|image: $DOCKER_USERNAME/resourceradar-frontend:latest|g" \
+sed -e "s/\${DOCKER_USERNAME}/$DOCKER_USERNAME/g" \
     docker-compose-hub.yml > docker-compose-$DOCKER_USERNAME.yml
 
 echo -e "${GREEN}Done! Images have been pushed to Docker Hub.${NC}"
@@ -49,4 +46,12 @@ echo ""
 echo -e "${YELLOW}Users can now run your application with:${NC}"
 echo "  docker-compose -f docker-compose-$DOCKER_USERNAME.yml up -d"
 echo ""
-echo -e "${YELLOW}Make sure to share the docker-compose file, nginx.conf, and init.sql with your users.${NC}"
+echo -e "${YELLOW}For more streamlined user experience, consider sharing:${NC}"
+echo "  1. docker-compose-$DOCKER_USERNAME.yml (renamed to docker-compose.yml)"
+echo "  2. nginx.conf"
+echo "  3. init.sql"
+echo "  4. setup-resourceradar.sh (configured with your username)"
+echo ""
+echo -e "${YELLOW}Or use automatic builds with GitHub Actions by:${NC}"
+echo "  1. Setting up DOCKER_HUB_USERNAME and DOCKER_HUB_ACCESS_TOKEN secrets in GitHub"
+echo "  2. Pushing changes to your main branch"

@@ -21,19 +21,23 @@ if ! docker info | grep -q "Username: $DOCKER_USERNAME"; then
   docker login
 fi
 
-# Build images from docker-compose file
-echo -e "${YELLOW}Building Docker images...${NC}"
-docker-compose build
+# Enable Docker BuildX for multi-architecture builds
+echo -e "${YELLOW}Setting up Docker BuildX for multi-architecture builds...${NC}"
+docker buildx create --name multiarch --use || true
+docker buildx inspect --bootstrap
 
-# Tag images with Docker Hub username
-echo -e "${YELLOW}Tagging images...${NC}"
-docker tag resourceradar_frontend $DOCKER_USERNAME/resourceradar-frontend:latest
-docker tag resourceradar_backend $DOCKER_USERNAME/resourceradar-backend:latest
+# Build and push multi-architecture images
+echo -e "${YELLOW}Building and pushing multi-architecture images (amd64, arm64)...${NC}"
 
-# Push images to Docker Hub
-echo -e "${YELLOW}Pushing images to Docker Hub...${NC}"
-docker push $DOCKER_USERNAME/resourceradar-frontend:latest
-docker push $DOCKER_USERNAME/resourceradar-backend:latest
+echo -e "${YELLOW}Building and pushing frontend image...${NC}"
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t $DOCKER_USERNAME/resourceradar-frontend:latest \
+  -f ./frontend/Dockerfile ./frontend --push
+
+echo -e "${YELLOW}Building and pushing backend image...${NC}"
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t $DOCKER_USERNAME/resourceradar-backend:latest \
+  -f ./backend/Dockerfile ./backend --push
 
 # Create docker-compose file for users
 echo -e "${YELLOW}Creating docker-compose file for distribution...${NC}"

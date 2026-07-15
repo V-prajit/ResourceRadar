@@ -16,7 +16,7 @@ Checking whether a handful of personal or lab machines are under load usually me
 - A backend timer re-polls every registered machine once per second over SSH, running `top`/`free` (or the macOS equivalents) and parsing the output.
 - Metrics are pushed onto Kafka topics, consumed, and written into InfluxDB as time series.
 - The dashboard receives live updates over a Socket.IO WebSocket instead of polling the API from the browser.
-- A detail view per machine queries InfluxDB for a selected time range (1 minute to 30 days) and renders it with Chart.js/Recharts.
+- A detail view per machine queries InfluxDB for a selected time range (1 minute to 30 days) and renders it with Chart.js (via react-chartjs-2).
 - Machines that fail to respond are marked offline rather than dropped silently.
 - A `testing/` harness spins up 10 disposable SSH-accepting containers with different resource limits, so the dashboard can be exercised without real remote hosts.
 
@@ -65,12 +65,12 @@ flowchart LR
 
 **Component choices, as implemented:**
 
-- **React + Material UI frontend** — dashboard cards, an "add machine" form, and a per-machine detail view with Chart.js/Recharts time-series graphs. Dark/light mode toggle.
-- **Express backend** — one process holds the REST API, the Socket.IO server, the SSH polling loop, and the Kafka producer/consumer. There's no separate collector service; `docker-compose.yml` runs it as a single `backend` container.
-- **PostgreSQL** — stores machine records (`name, host, username, password, port`) in a single `machines` table (`init.sql`). This is config data, not metrics.
-- **Kafka (+ Zookeeper)** — the collector publishes each CPU/memory reading to a `cpu-metrics` / `memory-metrics` topic instead of writing to InfluxDB directly; a consumer in the same backend process reads those topics and writes points into InfluxDB. This decouples collection from storage and gives the collector somewhere to hand off readings even if InfluxDB writes are momentarily slow. It also means a single-server deployment now runs a broker and a coordination service (Zookeeper, not KRaft) to support what is currently one consumer.
-- **InfluxDB** — the actual time-series store, queried with Flux for both the live dashboard values (`range(start: -5m) |> last()`) and the historical graphs.
-- **nginx** — reverse proxy in front of the frontend and backend containers, terminating on port 80 and also exposing InfluxDB's UI on 8086.
+- **React + Material UI frontend**: dashboard cards, an "add machine" form, and a per-machine detail view with Chart.js (react-chartjs-2) time-series graphs. `recharts` is also listed in `frontend/package.json` but isn't imported anywhere in `frontend/src`; it's an installed-but-unused dependency, not a second rendering library. Dark/light mode toggle.
+- **Express backend**: one process holds the REST API, the Socket.IO server, the SSH polling loop, and the Kafka producer/consumer. There's no separate collector service; `docker-compose.yml` runs it as a single `backend` container.
+- **PostgreSQL**: stores machine records (`name, host, username, password, port`) in a single `machines` table (`init.sql`). This is config data, not metrics.
+- **Kafka (+ Zookeeper)**: the collector publishes each CPU/memory reading to a `cpu-metrics` / `memory-metrics` topic instead of writing to InfluxDB directly; a consumer in the same backend process reads those topics and writes points into InfluxDB. This decouples collection from storage and gives the collector somewhere to hand off readings even if InfluxDB writes are momentarily slow. It also means a single-server deployment now runs a broker and a coordination service (Zookeeper, not KRaft) to support what is currently one consumer.
+- **InfluxDB**: the actual time-series store, queried with Flux for both the live dashboard values (`range(start: -5m) |> last()`) and the historical graphs.
+- **nginx**: reverse proxy in front of the frontend and backend containers, terminating on port 80. `nginx.conf` also defines a server block proxying to InfluxDB on 8086, but `docker-compose.yml` only publishes the nginx service's port 80 to the host, not 8086; the InfluxDB UI actually reaches the host through InfluxDB's own `8086:8086` port mapping in compose, not through this nginx proxy.
 
 ## Metrics ingestion pipeline
 
@@ -147,7 +147,7 @@ docker-compose up -d
 
 Then open `http://localhost`. First startup takes a minute while Kafka, Postgres, and InfluxDB initialize.
 
-The compose files currently hardcode the Postgres password and the InfluxDB admin token as plaintext environment values in `docker-compose.yml` / `docker-compose-hub.yml` rather than reading them from `.env` or Docker secrets — see Known Limitations. If you deploy this anywhere beyond a local/throwaway environment, replace those with your own values first:
+The compose files currently hardcode the Postgres password and the InfluxDB admin token as plaintext environment values in `docker-compose.yml` / `docker-compose-hub.yml` rather than reading them from `.env` or Docker secrets (see Known Limitations). If you deploy this anywhere beyond a local/throwaway environment, replace those with your own values first:
 
 ```bash
 # example values to override, not real secrets
@@ -169,15 +169,15 @@ cd frontend && npm install && npm start
 
 ## Testing
 
-There's no automated test suite (`backend/package.json`'s `test` script is the CRA/npm placeholder). What exists instead is a manual integration harness in `testing/`: `run-test-environment.sh` starts 10 disposable SSH-accepting containers with different CPU/memory limits on the same Docker network as the app, `stress-test-systems.sh` generates load on them so the graphs show variation, and `cleanup-test-environment.sh` tears it down. Useful for exercising the multi-machine dashboard and for producing screenshots, but it is not a CI-run test suite — the only GitHub Actions workflow in this repo builds and publishes Docker images, it doesn't run tests.
+There's no automated test suite (`backend/package.json`'s `test` script is the CRA/npm placeholder). What exists instead is a manual integration harness in `testing/`: `run-test-environment.sh` starts 10 disposable SSH-accepting containers with different CPU/memory limits on the same Docker network as the app, `stress-test-systems.sh` generates load on them so the graphs show variation, and `cleanup-test-environment.sh` tears it down. Useful for exercising the multi-machine dashboard and for producing screenshots, but it is not a CI-run test suite: the only GitHub Actions workflow in this repo builds and publishes Docker images, it doesn't run tests.
 
 ## Known limitations
 
-- **SSH auth is password-based, not key-based**, and machine credentials (including the SSH password) are stored **in plaintext** in the `machines` Postgres table (`init.sql` defines no encryption; `postgres_connect.js` writes/reads the raw value). This is materially weaker than "secure SSH authentication" might imply — it relies entirely on SSH's own transport encryption and on the Postgres database itself being secured, with no additional encryption at rest for saved credentials.
+- **SSH auth is password-based, not key-based**, and machine credentials (including the SSH password) are stored **in plaintext** in the `machines` Postgres table (`init.sql` defines no encryption; `postgres_connect.js` writes/reads the raw value). This is materially weaker than "secure SSH authentication" might imply: it relies entirely on SSH's own transport encryption and on the Postgres database itself being secured, with no additional encryption at rest for saved credentials.
 - The InfluxDB admin token and the Postgres password are hardcoded directly in `docker-compose.yml` and `docker-compose-hub.yml`, committed to this public repository, rather than sourced from `.env`/secrets. Anyone deploying from these files as-is is using publicly known credentials.
 - No automated tests; the `testing/` directory is a manual load-generation harness, not a CI suite.
 - No InfluxDB retention policy is configured in the repo, so storage grows unbounded by default.
-- Kafka + Zookeeper run as a broker/coordinator pair for what is currently a single producer and a single consumer in one backend process — real throughput headroom for multiple collectors, but it's infrastructure the current single-process design doesn't need to prove out yet.
+- Kafka + Zookeeper run as a broker/coordinator pair for what is currently a single producer and a single consumer in one backend process: real throughput headroom for multiple collectors, but it's infrastructure the current single-process design doesn't need to prove out yet.
 - No screenshots or hosted demo are included; see below.
 
 ## Missing media
@@ -186,8 +186,8 @@ No dashboard or detail-view screenshots exist in the repository (an earlier comm
 
 ## Personal contribution
 
-Solo project — I designed and built all of it: the SSH collector and OS-detection logic, the Kafka producer/consumer wiring, the InfluxDB read/write paths, the Postgres machine store, the Express API and Socket.IO layer, the React/Material UI frontend, the Docker Compose topology, the multi-arch GitHub Actions publish workflow, and the manual test harness.
+Solo project. I designed and built all of it: the SSH collector and OS-detection logic, the Kafka producer/consumer wiring, the InfluxDB read/write paths, the Postgres machine store, the Express API and Socket.IO layer, the React/Material UI frontend, the Docker Compose topology, the multi-arch GitHub Actions publish workflow, and the manual test harness.
 
 ## License
 
-No `LICENSE` file is present in this repository (recommend the owner add one — code is currently unlicensed, which by default means all rights reserved).
+No `LICENSE` file is present in this repository (recommend the owner add one; code is currently unlicensed, which by default means all rights reserved).
